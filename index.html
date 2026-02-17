@@ -1,1082 +1,1281 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>YZ Exercise – ניתוח תנועה</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=Rubik:wght@400;700;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-<style>
-:root {
-  --bg: #0a0a0f;
-  --surface: #13131a;
-  --surface2: #1c1c28;
-  --border: rgba(255,255,255,0.07);
-  --orange: #ff6b35;
-  --orange-dim: rgba(255,107,53,0.15);
-  --orange-glow: rgba(255,107,53,0.4);
-  --green: #06d6a0;
-  --green-dim: rgba(6,214,160,0.15);
-  --red: #ff4757;
-  --red-dim: rgba(255,71,87,0.15);
-  --yellow: #ffd23f;
-  --text: #f0f0f8;
-  --muted: rgba(240,240,248,0.45);
-  --radius: 18px;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YZ Exercise - מחולל אימונים</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- MediaPipe (נטען רק כשצריך) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E84A1C;
+            --secondary: #004E89;
+            --accent: #FFD23F;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --success: #06D6A0;
+            --gradient: linear-gradient(135deg, #FF6B35 0%, #E84A1C 100%);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+            --radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-html, body {
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Heebo', sans-serif;
-  overflow: hidden;
-}
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-/* ── LAYOUT ── */
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  position: relative;
-}
+        body::before {
+            content: '';
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255,107,53,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0,78,137,0.1) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
 
-/* ── TOPBAR ── */
-.topbar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  z-index: 30;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  background: linear-gradient(to bottom, rgba(10,10,15,0.95) 0%, transparent 100%);
-}
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
 
-.logo {
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 1.3rem;
-  color: var(--orange);
-  letter-spacing: -0.5px;
-}
-.logo span { color: var(--text); }
+        /* ── HEADER ── */
+        header { text-align: center; padding: 40px 20px; margin-bottom: 40px; animation: fadeInDown 0.8s ease-out; }
 
-.camera-flip-btn {
-  width: 42px; height: 42px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: rgba(19,19,26,0.8);
-  color: var(--text);
-  font-size: 1.2rem;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition: all 0.2s;
-}
-.camera-flip-btn:active { transform: scale(0.9); background: var(--orange-dim); }
+        h1 {
+            font-family: 'Rubik', sans-serif;
+            font-size: clamp(2rem, 6vw, 4rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, #fff 0%, #FFD23F 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin-bottom: 10px; letter-spacing: -1px;
+        }
+        .subtitle { color: rgba(255,255,255,0.9); font-size: clamp(1rem, 3vw, 1.3rem); font-weight: 300; }
 
-/* ── CAMERA CANVAS ── */
-.camera-wrap {
-  position: relative;
-  flex: 1;
-  overflow: hidden;
-  background: #000;
-}
+        /* ── NAV TABS ── */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(10px);
+            padding: 8px;
+            border-radius: 18px;
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 13px 10px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Rubik', sans-serif;
+            font-weight: 700;
+            font-size: clamp(0.85rem, 2.5vw, 1rem);
+            cursor: pointer;
+            transition: var(--transition);
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .nav-tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+        .nav-tab:not(.active):hover { background: rgba(255,255,255,0.15); color: white; }
 
-#videoEl {
-  position: absolute;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-}
+        /* ── PAGE SECTIONS ── */
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.4s ease-out; }
 
-#poseCanvas {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
+        /* ── MAIN CONTENT (workout generator) ── */
+        .main-content { display: grid; grid-template-columns: 1fr; gap: 30px; margin-bottom: 40px; }
+        @media (min-width: 768px) { .main-content { grid-template-columns: 300px 1fr; } }
 
-/* ── START OVERLAY ── */
-.start-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10,10,15,0.85);
-  backdrop-filter: blur(6px);
-  gap: 24px;
-  transition: opacity 0.5s;
-}
-.start-overlay.hidden { opacity: 0; pointer-events: none; }
+        .settings-panel {
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow-lg);
+            animation: fadeInRight 0.8s ease-out;
+            position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;
+        }
+        .settings-panel h2 { font-family: 'Rubik', sans-serif; font-size: 1.8rem; color: var(--primary); margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+        .setting-group { margin-bottom: 30px; }
+        .setting-group h3 { font-size: 1.1rem; color: var(--secondary); margin-bottom: 15px; font-weight: 600; }
+        .select-wrapper { position: relative; margin-bottom: 20px; }
+        select {
+            width: 100%; padding: 12px 16px; border: 2px solid var(--light); border-radius: 12px;
+            font-size: 1rem; font-family: 'Heebo', sans-serif; background: white; cursor: pointer;
+            transition: var(--transition); appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23FF6B35' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: left 16px center;
+        }
+        select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(255,107,53,0.1); }
 
-.start-icon {
-  font-size: 4rem;
-  animation: pulse 2s ease-in-out infinite;
-}
+        .checkbox-group { display: flex; flex-direction: column; gap: 12px; }
+        .checkbox-item { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 10px; border-radius: 8px; transition: var(--transition); }
+        .checkbox-item:hover { background: rgba(255,107,53,0.05); }
+        .checkbox-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
+        .checkbox-item label { cursor: pointer; user-select: none; font-weight: 500; }
 
-@keyframes pulse {
-  0%,100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
+        .workout-area { animation: fadeInLeft 0.8s ease-out; }
 
-.exercise-selector {
-  display: flex;
-  gap: 12px;
-}
+        .action-buttons { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+        .btn {
+            flex: 1; min-width: 200px; padding: 18px 32px; border: none; border-radius: 12px;
+            font-size: 1.1rem; font-weight: 700; font-family: 'Rubik', sans-serif;
+            cursor: pointer; transition: var(--transition);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            position: relative; overflow: hidden;
+        }
+        .btn::before {
+            content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0;
+            border-radius: 50%; background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s;
+        }
+        .btn:active::before { width: 300px; height: 300px; }
+        .btn-primary { background: var(--gradient); color: white; box-shadow: var(--shadow-md); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-secondary { background: white; color: var(--secondary); border: 2px solid var(--secondary); }
+        .btn-secondary:hover { background: var(--secondary); color: white; }
 
-.ex-btn {
-  padding: 14px 28px;
-  border-radius: 14px;
-  border: 2px solid var(--border);
-  background: var(--surface2);
-  color: var(--text);
-  font-family: 'Rubik', sans-serif;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.ex-btn.active, .ex-btn:hover {
-  border-color: var(--orange);
-  background: var(--orange-dim);
-  color: var(--orange);
-  box-shadow: 0 0 20px var(--orange-glow);
-}
+        .loading { display: none; text-align: center; padding: 60px; }
+        .loading.active { display: block; }
+        .spinner { width: 60px; height: 60px; border: 5px solid rgba(255,107,53,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
 
-.start-btn {
-  padding: 18px 52px;
-  border-radius: 16px;
-  border: none;
-  background: var(--orange);
-  color: #fff;
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 1.2rem;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 24px var(--orange-glow);
-  transition: all 0.2s;
-}
-.start-btn:active { transform: scale(0.96); }
+        .workout-container {
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow-lg);
+            margin-bottom: 30px; display: none;
+        }
+        .workout-container.active { display: block; animation: fadeIn 0.6s ease-out; }
+        .workout-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .workout-header h2 { font-family: 'Rubik', sans-serif; color: var(--primary); font-size: 1.8rem; }
+        .workout-stats { display: flex; gap: 15px; }
+        .stat-badge { background: var(--gradient); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
 
-.permission-hint {
-  color: var(--muted);
-  font-size: 0.85rem;
-  text-align: center;
-  max-width: 260px;
-  line-height: 1.5;
-}
+        .workout-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; margin-top: 20px; }
+        .workout-table thead tr { background: var(--secondary); color: white; }
+        .workout-table thead th { padding: 15px; text-align: right; font-weight: 600; font-size: 1rem; border: none; }
+        .workout-table thead th:first-child { border-radius: 12px 0 0 12px; }
+        .workout-table thead th:last-child { border-radius: 0 12px 12px 0; }
+        .workout-table tbody tr { background: white; box-shadow: var(--shadow-sm); transition: var(--transition); animation: slideUp 0.4s ease-out backwards; }
+        .workout-table tbody tr:hover { transform: translateX(-5px); box-shadow: var(--shadow-md); }
+        .workout-table tbody td { padding: 20px 15px; border: none; }
+        .workout-table tbody tr td:first-child { border-radius: 12px 0 0 12px; }
+        .workout-table tbody tr td:last-child { border-radius: 0 12px 12px 0; }
 
-/* ── FEEDBACK PILL (live) ── */
-.feedback-pill {
-  position: absolute;
-  top: 80px; left: 50%; transform: translateX(-50%);
-  z-index: 25;
-  background: rgba(19,19,26,0.88);
-  backdrop-filter: blur(10px);
-  border: 1.5px solid var(--border);
-  border-radius: 40px;
-  padding: 10px 22px;
-  font-family: 'Rubik', sans-serif;
-  font-weight: 700;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  transition: all 0.3s;
-  pointer-events: none;
-}
-.feedback-pill.good  { border-color: var(--green); color: var(--green); background: rgba(6,214,160,0.12); }
-.feedback-pill.warn  { border-color: var(--yellow); color: var(--yellow); background: rgba(255,210,63,0.12); }
-.feedback-pill.bad   { border-color: var(--red); color: var(--red); background: rgba(255,71,87,0.12); }
-.feedback-pill.idle  { color: var(--muted); }
+        .exercise-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--primary); text-decoration: none; font-weight: 600;
+            padding: 8px 16px; border-radius: 8px; background: rgba(255,107,53,0.1); transition: var(--transition);
+        }
+        .exercise-link:hover { background: var(--primary); color: white; transform: scale(1.05); }
 
-/* ── BOTTOM HUD ── */
-.hud {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  z-index: 30;
-  padding: 0 16px 28px;
-  background: linear-gradient(to top, rgba(10,10,15,0.97) 0%, transparent 100%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+        /* ── NEW: analyze button in table ── */
+        .analyze-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--secondary); text-decoration: none; font-weight: 600;
+            padding: 8px 14px; border-radius: 8px; background: rgba(0,78,137,0.08);
+            border: none; cursor: pointer; font-family: 'Heebo', sans-serif; font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .analyze-btn:hover { background: var(--secondary); color: white; transform: scale(1.05); }
 
-/* rep counter row */
-.rep-row {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 8px;
-}
+        .difficulty-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; }
+        .difficulty-קל { background: #D4EDDA; color: #155724; }
+        .difficulty-בינוני { background: #FFF3CD; color: #856404; }
+        .difficulty-קשה { background: #F8D7DA; color: #721C24; }
 
-.rep-count {
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 5.5rem;
-  line-height: 1;
-  color: var(--orange);
-  text-shadow: 0 0 40px var(--orange-glow);
-  transition: all 0.15s;
-}
-.rep-count.flash {
-  transform: scale(1.15);
-  text-shadow: 0 0 60px var(--orange-glow);
-}
+        .timer-container {
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow-lg);
+            margin-bottom: 30px; text-align: center; display: none;
+        }
+        .timer-container.active { display: block; animation: fadeIn 0.6s ease-out; }
+        .timer-display { font-size: 4rem; font-weight: 900; color: var(--primary); margin: 20px 0; font-family: 'Rubik', sans-serif; }
+        .timer-controls { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .timer-btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: var(--transition); }
 
-.rep-label {
-  font-size: 1rem;
-  color: var(--muted);
-  margin-bottom: 12px;
-  font-weight: 700;
-}
+        .history-container { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow-lg); display: none; }
+        .history-container.active { display: block; animation: fadeIn 0.6s ease-out; }
+        .history-item { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: var(--shadow-sm); cursor: pointer; transition: var(--transition); }
+        .history-item:hover { transform: translateX(-5px); box-shadow: var(--shadow-md); }
+        .history-date { color: var(--secondary); font-weight: 600; margin-bottom: 10px; }
 
-/* metric cards */
-.metrics-row {
-  display: flex;
-  gap: 10px;
-}
+        .alert { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: none; align-items: center; gap: 12px; animation: slideDown 0.4s ease-out; }
+        .alert.active { display: flex; }
+        .alert-success { background: #D4EDDA; color: #155724; border: 2px solid #C3E6CB; }
+        .alert-warning { background: #FFF3CD; color: #856404; border: 2px solid #FFEAA7; }
+        .alert-error { background: #F8D7DA; color: #721C24; border: 2px solid #F5C6CB; }
 
-.metric-card {
-  flex: 1;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 10px;
-  text-align: center;
-  transition: border-color 0.3s, background 0.3s;
-}
-.metric-card.good { border-color: var(--green); background: var(--green-dim); }
-.metric-card.warn { border-color: var(--yellow); background: rgba(255,210,63,0.1); }
-.metric-card.bad  { border-color: var(--red); background: var(--red-dim); }
+        .export-buttons { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .btn-export { flex: 1; min-width: 150px; padding: 10px 20px; background: white; color: var(--secondary); border: 2px solid var(--secondary); border-radius: 8px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+        .btn-export:hover { background: var(--secondary); color: white; }
 
-.metric-val {
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 1.5rem;
-  color: var(--text);
-}
-.metric-lbl {
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-top: 2px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
+        /* ══════════════════════════════════════════════════
+           POSE ANALYZER PAGE
+        ══════════════════════════════════════════════════ */
+        .pose-page {
+            background: rgba(255,255,255,0.95);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            min-height: 80vh;
+        }
 
-/* bottom controls */
-.controls-row {
-  display: flex;
-  gap: 10px;
-}
+        /* inner layout */
+        .pose-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            min-height: 80vh;
+        }
+        @media (min-width: 768px) {
+            .pose-layout { grid-template-columns: 1fr 320px; }
+        }
 
-.ctrl-btn {
-  flex: 1;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1.5px solid var(--border);
-  background: var(--surface2);
-  color: var(--text);
-  font-family: 'Rubik', sans-serif;
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all 0.2s;
-}
-.ctrl-btn:active { transform: scale(0.96); }
-.ctrl-btn.primary {
-  background: var(--orange);
-  border-color: var(--orange);
-  box-shadow: 0 2px 16px var(--orange-glow);
-}
-.ctrl-btn.danger { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+        /* camera side */
+        .pose-camera-col {
+            position: relative;
+            background: #0a0a0f;
+            min-height: 420px;
+            border-radius: var(--radius) 0 0 var(--radius);
+            overflow: hidden;
+        }
 
-/* ── ANGLE ARC overlay ── */
-.angle-display {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  transform: translateY(-50%);
-  z-index: 25;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  pointer-events: none;
-}
+        #poseVideo {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: contain;
+            transform: scaleX(-1);
+            background: #000;
+        }
+        #poseCanvas {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: contain;
+        }
 
-.angle-chip {
-  background: rgba(10,10,15,0.82);
-  backdrop-filter: blur(8px);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 14px;
-  text-align: center;
-  min-width: 72px;
-  transition: border-color 0.3s;
-}
-.angle-chip.good { border-color: var(--green); }
-.angle-chip.warn { border-color: var(--yellow); }
-.angle-chip.bad  { border-color: var(--red); }
-.angle-chip-val {
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 1.2rem;
-  color: var(--text);
-}
-.angle-chip-lbl {
-  font-size: 0.65rem;
-  color: var(--muted);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin-top: 2px;
-}
+        /* zoom controls */
+        .pose-zoom-controls {
+            position: absolute; top: 14px; right: 14px; z-index: 9;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .pose-zoom-btn {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: 1.5px solid rgba(255,255,255,0.18);
+            background: rgba(10,10,15,0.75); color: #fff;
+            font-size: 1.2rem; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(6px); transition: var(--transition); line-height: 1;
+        }
+        .pose-zoom-btn:active { transform: scale(0.88); background: rgba(255,107,53,0.3); }
+        .pose-zoom-label {
+            text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.5);
+            font-family: 'Rubik', sans-serif; font-weight: 700;
+        }
 
-/* ── SESSION SUMMARY MODAL ── */
-.summary-modal {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: flex-end;
-  padding: 20px;
-  background: rgba(10,10,15,0.7);
-  backdrop-filter: blur(8px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s;
-}
-.summary-modal.visible {
-  opacity: 1;
-  pointer-events: all;
-}
+        /* start overlay inside camera */
+        .pose-start-overlay {
+            position: absolute; inset: 0; z-index: 10;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 20px;
+            background: rgba(10,10,15,0.88); backdrop-filter: blur(6px);
+            transition: opacity 0.4s;
+            padding: 30px;
+            text-align: center;
+        }
+        .pose-start-overlay.hidden { opacity: 0; pointer-events: none; }
 
-.summary-card {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  transform: translateY(60px);
-  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
-}
-.summary-modal.visible .summary-card { transform: translateY(0); }
+        .pose-start-overlay .big-icon { font-size: 3.5rem; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
 
-.summary-title {
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 1.5rem;
-  color: var(--orange);
-  text-align: center;
-}
+        .pose-ex-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .pose-ex-btn {
+            padding: 12px 22px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08); color: #fff;
+            font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 0.95rem;
+            cursor: pointer; transition: var(--transition);
+        }
+        .pose-ex-btn.active, .pose-ex-btn:hover {
+            border-color: var(--primary); background: rgba(255,107,53,0.2); color: var(--primary);
+        }
 
-.summary-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
+        .pose-start-btn {
+            padding: 16px 44px; border-radius: 14px; border: none;
+            background: var(--gradient); color: #fff;
+            font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 1.1rem;
+            cursor: pointer; box-shadow: 0 4px 20px rgba(255,107,53,0.4);
+            transition: var(--transition);
+        }
+        .pose-start-btn:active { transform: scale(0.96); }
 
-.summary-stat {
-  background: var(--surface2);
-  border-radius: 14px;
-  padding: 16px;
-  text-align: center;
-}
-.summary-stat-val {
-  font-family: 'Rubik', sans-serif;
-  font-weight: 900;
-  font-size: 2rem;
-  color: var(--orange);
-}
-.summary-stat-lbl {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 600;
-  margin-top: 4px;
-}
+        .pose-permission-hint { color: rgba(255,255,255,0.5); font-size: 0.8rem; max-width: 240px; line-height: 1.5; }
 
-.summary-feedback-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.summary-feedback-list li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  color: var(--muted);
-  background: var(--surface2);
-  padding: 10px 14px;
-  border-radius: 10px;
-}
+        /* loading overlay inside camera */
+        .pose-loading-overlay {
+            position: absolute; inset: 0; z-index: 20;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 16px;
+            background: rgba(10,10,15,0.92);
+            transition: opacity 0.5s;
+        }
+        .pose-loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .pose-spinner { width: 48px; height: 48px; border: 4px solid rgba(255,107,53,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.9s linear infinite; }
+        .pose-loading-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; text-align: center; }
 
-.summary-actions {
-  display: flex;
-  gap: 10px;
-}
+        /* feedback pill on camera */
+        .pose-feedback-pill {
+            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+            z-index: 8; white-space: nowrap;
+            background: rgba(10,10,15,0.82); backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,0.12); border-radius: 40px;
+            padding: 9px 20px;
+            font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 0.9rem;
+            color: rgba(255,255,255,0.8); pointer-events: none;
+            transition: all 0.3s;
+        }
+        .pose-feedback-pill.good { border-color: #06d6a0; color: #06d6a0; }
+        .pose-feedback-pill.warn { border-color: #ffd23f; color: #ffd23f; }
+        .pose-feedback-pill.bad  { border-color: #ff4757; color: #ff4757; }
 
-/* ── LOADING SCREEN ── */
-.loading-screen {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  transition: opacity 0.6s;
-}
-.loading-screen.hidden { opacity: 0; pointer-events: none; }
+        /* flip button */
+        .pose-flip-btn {
+            position: absolute; top: 14px; left: 14px; z-index: 9;
+            width: 38px; height: 38px; border-radius: 50%;
+            border: 1.5px solid rgba(255,255,255,0.18); background: rgba(10,10,15,0.7);
+            color: #fff; font-size: 1.1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(6px); transition: var(--transition);
+        }
+        .pose-flip-btn:active { transform: scale(0.9); }
 
-.loader-ring {
-  width: 64px; height: 64px;
-  border: 4px solid var(--surface2);
-  border-top-color: var(--orange);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+        /* right panel */
+        .pose-panel-col {
+            padding: 28px 24px;
+            display: flex; flex-direction: column; gap: 20px;
+            background: rgba(255,255,255,0.97);
+            border-radius: 0 var(--radius) var(--radius) 0;
+        }
 
-.loader-text {
-  color: var(--muted);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-align: center;
-  max-width: 240px;
-  line-height: 1.6;
-}
+        .pose-panel-title {
+            font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 1.4rem; color: var(--primary);
+        }
 
-/* ── REP FLASH ── */
-@keyframes repFlash {
-  0%   { box-shadow: 0 0 0 0 var(--orange-glow); }
-  50%  { box-shadow: 0 0 0 30px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
-.camera-wrap.flash-frame { animation: repFlash 0.4s ease-out; }
+        /* rep counter */
+        .pose-rep-box {
+            text-align: center; padding: 20px;
+            background: linear-gradient(135deg, rgba(255,107,53,0.08), rgba(232,74,28,0.04));
+            border: 2px solid rgba(255,107,53,0.15); border-radius: 14px;
+        }
+        .pose-rep-num {
+            font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 4.5rem; line-height: 1;
+            color: var(--primary);
+            transition: transform 0.15s;
+        }
+        .pose-rep-num.flash { transform: scale(1.2); }
+        .pose-rep-lbl { color: rgba(26,26,46,0.5); font-weight: 700; font-size: 0.9rem; margin-top: 4px; }
 
-/* progress bar inside metric card */
-.metric-bar-wrap {
-  height: 4px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 2px;
-  margin-top: 6px;
-  overflow: hidden;
-}
-.metric-bar {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s, background 0.3s;
-}
-</style>
+        /* metric cards */
+        .pose-metrics { display: flex; flex-direction: column; gap: 10px; }
+
+        .pose-metric-card {
+            padding: 14px 16px; border-radius: 12px; border: 1.5px solid #eee;
+            background: white; transition: border-color 0.3s, background 0.3s;
+        }
+        .pose-metric-card.good { border-color: #06d6a0; background: rgba(6,214,160,0.05); }
+        .pose-metric-card.warn { border-color: #ffd23f; background: rgba(255,210,63,0.05); }
+        .pose-metric-card.bad  { border-color: #ff4757; background: rgba(255,71,87,0.05); }
+
+        .pose-metric-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .pose-metric-name { font-weight: 700; font-size: 0.85rem; color: var(--dark); }
+        .pose-metric-val { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 1.2rem; color: var(--dark); }
+
+        .pose-bar-wrap { height: 5px; background: rgba(0,0,0,0.07); border-radius: 3px; overflow: hidden; }
+        .pose-bar { height: 100%; border-radius: 3px; transition: width 0.3s, background 0.3s; }
+
+        /* controls */
+        .pose-controls { display: flex; gap: 10px; margin-top: auto; }
+        .pose-ctrl-btn {
+            flex: 1; padding: 13px; border-radius: 12px;
+            border: 2px solid var(--secondary); background: white; color: var(--secondary);
+            font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 0.9rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: var(--transition);
+        }
+        .pose-ctrl-btn:hover { background: var(--secondary); color: white; }
+        .pose-ctrl-btn.danger { border-color: #ff4757; color: #ff4757; }
+        .pose-ctrl-btn.danger:hover { background: #ff4757; color: white; }
+        .pose-ctrl-btn.primary { background: var(--gradient); border-color: transparent; color: white; box-shadow: var(--shadow-sm); }
+
+        /* summary inside panel */
+        .pose-summary {
+            display: none;
+            flex-direction: column; gap: 14px;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .pose-summary.visible { display: flex; }
+
+        .pose-summary-title { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 1.3rem; color: var(--primary); text-align: center; }
+        .pose-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pose-summary-stat { background: var(--light); border-radius: 12px; padding: 14px; text-align: center; }
+        .pose-summary-stat-val { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 1.8rem; color: var(--primary); }
+        .pose-summary-stat-lbl { font-size: 0.75rem; color: rgba(26,26,46,0.5); font-weight: 600; margin-top: 4px; }
+        .pose-summary-cues { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+        .pose-summary-cues li { font-size: 0.85rem; background: white; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeInDown { from{opacity:0;transform:translateY(-30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeInLeft { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes fadeInRight { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            header { padding: 30px 15px; margin-bottom: 20px; }
+            .settings-panel { position: static; max-height: none; }
+            .btn { min-width: 100%; padding: 16px 24px; }
+            .workout-table { font-size: 0.9rem; }
+            .workout-table thead th, .workout-table tbody td { padding: 12px 8px; }
+            .timer-display { font-size: 3rem; }
+            .action-buttons { flex-direction: column; }
+            .pose-panel-col { border-radius: 0 0 var(--radius) var(--radius); }
+            .pose-camera-col { border-radius: var(--radius) var(--radius) 0 0; min-height: 56vw; }
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            select { font-size: 16px; }
+            input[type="checkbox"] { width: 24px; height: 24px; }
+        }
+    </style>
 </head>
 <body>
-<div class="app">
+<div class="container">
 
-  <!-- Loading -->
-  <div class="loading-screen" id="loadingScreen">
-    <div style="font-family:'Rubik',sans-serif;font-weight:900;font-size:1.6rem;color:var(--orange)">💪 YZ Exercise</div>
-    <div class="loader-ring"></div>
-    <div class="loader-text">טוען מנוע ניתוח תנועה<br>MediaPipe Pose…</div>
-  </div>
+    <header>
+        <h1>💪 YZ Exercise</h1>
+        <p class="subtitle">מחולל אימונים חכם ואישי</p>
+    </header>
 
-  <!-- Top bar -->
-  <div class="topbar">
-    <div class="logo">YZ <span>Exercise</span></div>
-    <button class="camera-flip-btn" id="flipBtn" title="החלף מצלמה">🔄</button>
-  </div>
-
-  <!-- Camera -->
-  <div class="camera-wrap" id="cameraWrap">
-    <video id="videoEl" playsinline autoplay muted></video>
-    <canvas id="poseCanvas"></canvas>
-
-    <!-- Feedback pill -->
-    <div class="feedback-pill idle" id="feedbackPill">ממתין לזיהוי…</div>
-
-    <!-- Angle chips -->
-    <div class="angle-display" id="angleDisplay" style="display:none">
-      <div class="angle-chip" id="chipKnee">
-        <div class="angle-chip-val" id="chipKneeVal">—°</div>
-        <div class="angle-chip-lbl" id="chipKneeLbl">ברך</div>
-      </div>
-      <div class="angle-chip" id="chipHip">
-        <div class="angle-chip-val" id="chipHipVal">—°</div>
-        <div class="angle-chip-lbl" id="chipHipLbl">ירך</div>
-      </div>
+    <!-- ── NAV TABS ── -->
+    <div class="nav-tabs">
+        <button class="nav-tab active" data-page="generator">🏋️ מחולל אימונים</button>
+        <button class="nav-tab" data-page="analyzer">📷 ניתוח תנועה</button>
+        <button class="nav-tab" data-page="history-page">📋 היסטוריה</button>
     </div>
 
-    <!-- Start overlay -->
-    <div class="start-overlay" id="startOverlay">
-      <div class="start-icon">🎯</div>
-      <div style="font-family:'Rubik',sans-serif;font-weight:900;font-size:1.4rem;text-align:center">בחר תרגיל</div>
-      <div class="exercise-selector">
-        <button class="ex-btn active" data-ex="squat">🦵 סקוואט</button>
-        <button class="ex-btn" data-ex="pushup">💪 Push-up</button>
-      </div>
-      <button class="start-btn" id="startBtn">▶ התחל ניתוח</button>
-      <div class="permission-hint">הערה: הדפדפן יבקש גישה למצלמה. כל הנתונים נשארים במכשיר שלך בלבד.</div>
+    <!-- ════════════════════════════════════════
+         PAGE 1 — WORKOUT GENERATOR (original)
+    ════════════════════════════════════════ -->
+    <div class="page active" id="page-generator">
+        <div class="main-content">
+
+            <aside class="settings-panel">
+                <h2>⚙️ הגדרות</h2>
+                <div class="setting-group">
+                    <h3>כמות תרגילים</h3>
+                    <div class="select-wrapper">
+                        <select id="exerciseCount">
+                            <option value="3">3 תרגילים</option>
+                            <option value="4">4 תרגילים</option>
+                            <option value="5" selected>5 תרגילים</option>
+                            <option value="6">6 תרגילים</option>
+                            <option value="7">7 תרגילים</option>
+                            <option value="8">8 תרגילים</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>רמת קושי</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item"><input type="checkbox" id="diff-easy" value="קל" checked><label for="diff-easy">קל</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="diff-medium" value="בינוני" checked><label for="diff-medium">בינוני</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="diff-hard" value="קשה" checked><label for="diff-hard">קשה</label></div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>ציוד זמין</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item"><input type="checkbox" id="eq-bodyweight" value="משקל גוף" checked><label for="eq-bodyweight">משקל גוף</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="eq-trx" value="TRX" checked><label for="eq-trx">TRX</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="eq-dumbbells" value="דאמבלים" checked><label for="eq-dumbbells">דאמבלים</label></div>
+                        <div class="checkbox-item"><input type="checkbox" id="eq-band" value="גומיה" checked><label for="eq-band">גומיה</label></div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="workout-area">
+                <div id="alertBox" class="alert"></div>
+
+                <div class="action-buttons">
+                    <button id="generateBtn" class="btn btn-primary">🏋️ צור אימון חדש</button>
+                    <button id="historyBtn" class="btn btn-secondary">📋 היסטוריית אימונים</button>
+                </div>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>יוצר את האימון המושלם עבורך...</p>
+                </div>
+
+                <div id="workoutContainer" class="workout-container">
+                    <div class="workout-header">
+                        <h2>🎯 התוכנית שלך</h2>
+                        <div class="workout-stats"><span id="workoutDate" class="stat-badge"></span></div>
+                    </div>
+                    <table class="workout-table">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>תרגיל</th><th>קבוצת שריר</th>
+                                <th>רמת קושי</th><th>ציוד</th><th>הדרכה</th><th>ניתוח</th>
+                            </tr>
+                        </thead>
+                        <tbody id="workoutTableBody"></tbody>
+                    </table>
+                    <div class="export-buttons">
+                        <button id="printBtn" class="btn-export">🖨️ הדפס</button>
+                        <button id="shareBtn" class="btn-export">📤 שתף</button>
+                        <button id="saveBtn" class="btn-export">💾 שמור</button>
+                    </div>
+                </div>
+
+                <div id="timerContainer" class="timer-container">
+                    <h2>⏱️ טיימר אימון</h2>
+                    <div class="timer-display" id="timerDisplay">00:00</div>
+                    <div class="timer-controls">
+                        <button id="startTimer" class="timer-btn btn-primary">התחל</button>
+                        <button id="pauseTimer" class="timer-btn btn-secondary">עצור</button>
+                        <button id="resetTimer" class="timer-btn btn-secondary">אפס</button>
+                    </div>
+                </div>
+
+                <div id="historyContainer" class="history-container">
+                    <h2>📋 היסטוריית אימונים</h2>
+                    <div id="historyList"></div>
+                </div>
+            </main>
+        </div>
     </div>
-  </div>
 
-  <!-- HUD -->
-  <div class="hud" id="hud" style="display:none">
+    <!-- ════════════════════════════════════════
+         PAGE 2 — POSE ANALYZER (new feature)
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-analyzer">
+        <div class="pose-page">
+            <div class="pose-layout">
 
-    <!-- Rep counter -->
-    <div class="rep-row">
-      <div class="rep-count" id="repCount">0</div>
-      <div class="rep-label">חזרות</div>
+                <!-- Camera column -->
+                <div class="pose-camera-col">
+                    <video id="poseVideo" playsinline autoplay muted></video>
+                    <canvas id="poseCanvas"></canvas>
+
+                    <!-- Loading overlay -->
+                    <div class="pose-loading-overlay" id="poseLoadingOverlay">
+                        <div class="pose-spinner"></div>
+                        <div class="pose-loading-text">טוען MediaPipe Pose…</div>
+                    </div>
+
+                    <!-- Start overlay -->
+                    <div class="pose-start-overlay" id="poseStartOverlay">
+                        <div class="big-icon">📷</div>
+                        <div style="font-family:'Rubik',sans-serif;font-weight:900;font-size:1.3rem;color:#fff">בחר תרגיל לניתוח</div>
+                        <div class="pose-ex-btns">
+                            <button class="pose-ex-btn active" data-ex="squat">🦵 סקוואט</button>
+                            <button class="pose-ex-btn" data-ex="pushup">💪 Push-up</button>
+                        </div>
+                        <button class="pose-start-btn" id="poseStartBtn">▶ התחל ניתוח</button>
+                        <div class="pose-permission-hint">הדפדפן יבקש גישה למצלמה. כל הנתונים נשארים במכשיר בלבד.</div>
+                    </div>
+
+                    <!-- Feedback pill -->
+                    <div class="pose-feedback-pill" id="poseFeedbackPill">ממתין לזיהוי…</div>
+
+                    <!-- Flip camera -->
+                    <button class="pose-flip-btn" id="poseFlipBtn" title="החלף מצלמה">🔄</button>
+
+                    <!-- Zoom controls -->
+                    <div class="pose-zoom-controls">
+                        <button class="pose-zoom-btn" id="zoomIn">+</button>
+                        <div class="pose-zoom-label" id="zoomLabel">1×</div>
+                        <button class="pose-zoom-btn" id="zoomOut">−</button>
+                    </div>
+                </div>
+
+                <!-- Stats panel -->
+                <div class="pose-panel-col" id="posePanelCol">
+
+                    <!-- Active session UI -->
+                    <div id="poseActiveUI">
+                        <div class="pose-panel-title" id="posePanelTitle">ניתוח תנועה</div>
+
+                        <div class="pose-rep-box">
+                            <div class="pose-rep-num" id="poseRepNum">0</div>
+                            <div class="pose-rep-lbl">חזרות</div>
+                        </div>
+
+                        <div class="pose-metrics" id="poseMetrics">
+                            <!-- filled by JS -->
+                        </div>
+
+                        <div class="pose-controls">
+                            <button class="pose-ctrl-btn danger" id="poseStopBtn">⏹ סיום</button>
+                            <button class="pose-ctrl-btn" id="poseResetBtn">↺ אפס</button>
+                        </div>
+                    </div>
+
+                    <!-- Summary (shown after stop) -->
+                    <div class="pose-summary" id="poseSummary">
+                        <div class="pose-summary-title">🏆 סיכום</div>
+                        <div class="pose-summary-grid" id="poseSummaryGrid"></div>
+                        <ul class="pose-summary-cues" id="poseSummaryCues"></ul>
+                        <div class="pose-controls">
+                            <button class="pose-ctrl-btn primary" id="poseRestartBtn">🔁 אימון חדש</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Metric cards -->
-    <div class="metrics-row" id="metricsRow">
-      <!-- filled dynamically -->
+    <!-- ════════════════════════════════════════
+         PAGE 3 — HISTORY (moved from inline)
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-history-page">
+        <div class="history-container active" style="display:block">
+            <h2>📋 היסטוריית אימונים</h2>
+            <div id="historyListFull"></div>
+        </div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls-row">
-      <button class="ctrl-btn danger" id="stopBtn">⏹ סיום</button>
-      <button class="ctrl-btn primary" id="resetRepBtn">↺ אפס</button>
-    </div>
-  </div>
-
-  <!-- Summary Modal -->
-  <div class="summary-modal" id="summaryModal">
-    <div class="summary-card">
-      <div class="summary-title">🏆 סיכום אימון</div>
-      <div class="summary-stats" id="summaryStats"></div>
-      <ul class="summary-feedback-list" id="summaryFeedback"></ul>
-      <div class="summary-actions">
-        <button class="ctrl-btn" id="summaryClose" style="flex:1">✕ סגור</button>
-        <button class="ctrl-btn primary" id="summaryRestart" style="flex:2">🔁 אימון חדש</button>
-      </div>
-    </div>
-  </div>
-
-</div>
+</div><!-- /container -->
 
 <script>
-// ═══════════════════════════════════════════════════════════
-//  UTILITIES
-// ═══════════════════════════════════════════════════════════
-function angle3(A, B, C) {
-  // angle at B
-  const BA = { x: A.x - B.x, y: A.y - B.y };
-  const BC = { x: C.x - B.x, y: C.y - B.y };
-  const dot = BA.x * BC.x + BA.y * BC.y;
-  const magBA = Math.hypot(BA.x, BA.y);
-  const magBC = Math.hypot(BC.x, BC.y);
-  if (magBA === 0 || magBC === 0) return 0;
-  return Math.round(Math.acos(Math.min(1, Math.max(-1, dot / (magBA * magBC)))) * (180 / Math.PI));
+// ═══════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('page-' + tab.dataset.page).classList.add('active');
+        if (tab.dataset.page === 'history-page') renderHistoryFull();
+    });
+});
+
+// ═══════════════════════════════════════════════════
+//  EXERCISE DATA
+// ═══════════════════════════════════════════════════
+let exercisesData = [];
+
+const ANALYZABLE = ['squat', 'pushup']; // exercises with pose support
+
+// Map exercise names to pose types
+function getPoseType(name) {
+    const n = name.toLowerCase();
+    if (n.includes('squat') || n.includes('סקוואט')) return 'squat';
+    if (n.includes('push') || n.includes('פוש')) return 'pushup';
+    return null;
 }
 
-function lm(landmarks, idx) {
-  const p = landmarks[idx];
-  return { x: p.x, y: p.y, z: p.z, vis: p.visibility };
+async function loadExercises() {
+    try {
+        const response = await fetch('exercises.json');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.Sheet1 && Array.isArray(data.Sheet1)) {
+                exercisesData = data.Sheet1.map(ex => ({
+                    name: ex['שם'] || ex.name || 'ללא שם',
+                    muscle: ex['קבוצת שריר'] || ex.muscle || 'כללי',
+                    difficulty: ex['רמת קושי'] || ex.difficulty || 'בינוני',
+                    equipment: ex['סוג ציוד'] || ex.equipment || 'משקל גוף',
+                    link: ex['קישור'] || ex.link || '#'
+                }));
+            } else if (Array.isArray(data)) {
+                exercisesData = data.map(ex => ({
+                    name: ex['שם'] || ex.name || 'ללא שם',
+                    muscle: ex['קבוצת שריר'] || ex.muscle || 'כללי',
+                    difficulty: ex['רמת קושי'] || ex.difficulty || 'בינוני',
+                    equipment: ex['סוג ציוד'] || ex.equipment || 'משקל גוף',
+                    link: ex['קישור'] || ex.link || '#'
+                }));
+            } else throw new Error('bad format');
+        } else throw new Error('no file');
+    } catch {
+        exercisesData = [
+            {name:"Push-ups",muscle:"חזה",difficulty:"קל",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=IODxDxX7oi4"},
+            {name:"Squats",muscle:"רגליים",difficulty:"קל",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=aclHkVaku9U"},
+            {name:"Plank",muscle:"בטן",difficulty:"בינוני",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=pSHjTRCQxIw"},
+            {name:"Dumbbell Rows",muscle:"גב",difficulty:"בינוני",equipment:"דאמבלים",link:"https://www.youtube.com/watch?v=roCP6wCXPqo"},
+            {name:"TRX Pull",muscle:"גב",difficulty:"קשה",equipment:"TRX",link:"https://www.youtube.com/watch?v=1234567890"},
+            {name:"Lunges",muscle:"רגליים",difficulty:"בינוני",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=QOVaHwm-Q6U"},
+            {name:"Shoulder Press",muscle:"כתפיים",difficulty:"בינוני",equipment:"דאמבלים",link:"https://www.youtube.com/watch?v=qEwKCR5JCog"},
+            {name:"Bicep Curls",muscle:"ידיים",difficulty:"קל",equipment:"דאמבלים",link:"https://www.youtube.com/watch?v=ykJmrZ5v0Oo"},
+            {name:"Band Pull Apart",muscle:"כתפיים",difficulty:"קל",equipment:"גומיה",link:"https://www.youtube.com/watch?v=VeCFg43kS9g"},
+            {name:"Mountain Climbers",muscle:"בטן",difficulty:"קשה",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=nmwgirgXLYM"},
+            {name:"Russian Twists",muscle:"בטן",difficulty:"בינוני",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=wkD8rjkodUI"},
+            {name:"Deadlift",muscle:"גב",difficulty:"קשה",equipment:"דאמבלים",link:"https://www.youtube.com/watch?v=ytGaGIn3SjE"},
+            {name:"Band Squats",muscle:"רגליים",difficulty:"קשה",equipment:"גומיה",link:"https://www.youtube.com/watch?v=abc789"},
+            {name:"Pike Push-ups",muscle:"כתפיים",difficulty:"קשה",equipment:"משקל גוף",link:"https://www.youtube.com/watch?v=spoSDo1P3O4"}
+        ];
+    }
 }
 
-function lerp(a, b, t) { return a + (b - a) * t; }
+// ═══════════════════════════════════════════════════
+//  ORIGINAL WORKOUT GENERATOR LOGIC
+// ═══════════════════════════════════════════════════
+let currentWorkout = null;
+let workoutHistory = JSON.parse(localStorage.getItem('workoutHistory')) || [];
+let timerInterval = null;
+let timerSeconds = 0;
 
-// ═══════════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════════
-const state = {
-  exercise: 'squat',
-  running: false,
-  reps: 0,
-  phase: 'up',           // for squat/pushup phase tracking
-  facingUser: true,
-  session: {
-    startTime: null,
-    repTimestamps: [],
-    goodReps: 0,
-    badReps: 0,
-    cues: {}              // cue -> count
-  }
+document.getElementById('generateBtn').addEventListener('click', generateWorkout);
+document.getElementById('historyBtn').addEventListener('click', toggleHistory);
+document.getElementById('printBtn').addEventListener('click', printWorkout);
+document.getElementById('shareBtn').addEventListener('click', shareWorkout);
+document.getElementById('saveBtn').addEventListener('click', saveWorkout);
+document.getElementById('startTimer').addEventListener('click', startTimer);
+document.getElementById('pauseTimer').addEventListener('click', pauseTimer);
+document.getElementById('resetTimer').addEventListener('click', resetTimer);
+
+function generateWorkout() {
+    const selectedDifficulties = Array.from(document.querySelectorAll('input[id^="diff-"]:checked')).map(cb => cb.value);
+    const selectedEquipment = Array.from(document.querySelectorAll('input[id^="eq-"]:checked')).map(cb => cb.value);
+    const exerciseCount = parseInt(document.getElementById('exerciseCount').value);
+
+    if (!selectedDifficulties.length || !selectedEquipment.length) {
+        showAlert('אנא בחר לפחות רמת קושי אחת וסוג ציוד אחד', 'error'); return;
+    }
+
+    document.getElementById('loading').classList.add('active');
+    document.getElementById('workoutContainer').classList.remove('active');
+    document.getElementById('historyContainer').classList.remove('active');
+
+    setTimeout(() => {
+        const filtered = exercisesData.filter(ex =>
+            selectedDifficulties.includes(ex.difficulty) && selectedEquipment.includes(ex.equipment)
+        );
+
+        if (!filtered.length) {
+            showAlert('לא נמצאו תרגילים מתאימים. נסה לשנות את ההגדרות', 'warning');
+            document.getElementById('loading').classList.remove('active'); return;
+        }
+
+        const workout = [], usedMuscles = new Set(), usedExercises = new Set();
+        const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+
+        for (const ex of shuffled) {
+            if (workout.length >= exerciseCount) break;
+            if (!usedMuscles.has(ex.muscle) && !usedExercises.has(ex.name)) {
+                workout.push(ex); usedMuscles.add(ex.muscle); usedExercises.add(ex.name);
+            }
+        }
+        for (const ex of shuffled) {
+            if (workout.length >= exerciseCount) break;
+            if (!usedExercises.has(ex.name)) { workout.push(ex); usedExercises.add(ex.name); }
+        }
+
+        if (workout.length < exerciseCount) showAlert(`נמצאו רק ${workout.length} תרגילים מתאימים`, 'warning');
+
+        currentWorkout = { exercises: workout, date: new Date().toISOString(), settings: { count: exerciseCount, difficulties: selectedDifficulties, equipment: selectedEquipment } };
+        displayWorkout(currentWorkout);
+        document.getElementById('loading').classList.remove('active');
+        showAlert('✅ אימון נוצר בהצלחה!', 'success');
+    }, 1000);
+}
+
+function displayWorkout(workout) {
+    const tbody = document.getElementById('workoutTableBody');
+    tbody.innerHTML = '';
+    workout.exercises.forEach((ex, i) => {
+        const poseType = getPoseType(ex.name);
+        const row = document.createElement('tr');
+        row.style.animationDelay = `${i * 0.1}s`;
+        row.innerHTML = `
+            <td><strong>${i + 1}</strong></td>
+            <td><strong>${ex.name}</strong></td>
+            <td>${ex.muscle}</td>
+            <td><span class="difficulty-badge difficulty-${ex.difficulty}">${ex.difficulty}</span></td>
+            <td>${ex.equipment}</td>
+            <td><a href="${ex.link}" target="_blank" class="exercise-link">🎥 הדרכה</a></td>
+            <td>${poseType
+                ? `<button class="analyze-btn" data-pose="${poseType}">📷 נתח</button>`
+                : '<span style="color:#bbb;font-size:.85rem">—</span>'
+            }</td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // wire analyze buttons → switch to analyzer tab with correct exercise
+    tbody.querySelectorAll('.analyze-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const poseType = btn.dataset.pose;
+            // switch tab
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelector('[data-page="analyzer"]').classList.add('active');
+            document.getElementById('page-analyzer').classList.add('active');
+            // pre-select exercise
+            document.querySelectorAll('.pose-ex-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.ex === poseType);
+            });
+            poseState.exercise = poseType;
+        });
+    });
+
+    document.getElementById('workoutDate').textContent = new Date(workout.date).toLocaleDateString('he-IL');
+    document.getElementById('workoutContainer').classList.add('active');
+    document.getElementById('timerContainer').classList.add('active');
+}
+
+function showAlert(msg, type) {
+    const el = document.getElementById('alertBox');
+    el.textContent = msg;
+    el.className = `alert alert-${type} active`;
+    setTimeout(() => el.classList.remove('active'), 5000);
+}
+
+function startTimer() {
+    if (timerInterval) return;
+    timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+}
+function pauseTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+function resetTimer() { pauseTimer(); timerSeconds = 0; updateTimerDisplay(); }
+function updateTimerDisplay() {
+    const m = Math.floor(timerSeconds / 60), s = timerSeconds % 60;
+    document.getElementById('timerDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function saveWorkout() {
+    if (!currentWorkout) { showAlert('אין אימון לשמור', 'warning'); return; }
+    workoutHistory.unshift(currentWorkout);
+    if (workoutHistory.length > 10) workoutHistory = workoutHistory.slice(0, 10);
+    localStorage.setItem('workoutHistory', JSON.stringify(workoutHistory));
+    showAlert('💾 האימון נשמר בהצלחה!', 'success');
+}
+
+function renderHistoryFull() {
+    const el = document.getElementById('historyListFull');
+    el.innerHTML = '';
+    if (!workoutHistory.length) { el.innerHTML = '<p style="text-align:center;color:#666">אין אימונים שמורים</p>'; return; }
+    workoutHistory.forEach(workout => {
+        const d = new Date(workout.date);
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `<div class="history-date">${d.toLocaleDateString('he-IL')} – ${d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</div><div>${workout.exercises.length} תרגילים</div>`;
+        item.addEventListener('click', () => {
+            currentWorkout = workout;
+            document.querySelector('[data-page="generator"]').click();
+            displayWorkout(workout);
+        });
+        el.appendChild(item);
+    });
+}
+
+function toggleHistory() {
+    const h = document.getElementById('historyContainer'), w = document.getElementById('workoutContainer');
+    if (h.classList.contains('active')) { h.classList.remove('active'); }
+    else { loadHistoryInline(); h.classList.add('active'); w.classList.remove('active'); }
+}
+function loadHistoryInline() {
+    const el = document.getElementById('historyList');
+    el.innerHTML = '';
+    if (!workoutHistory.length) { el.innerHTML = '<p style="text-align:center;color:#666">אין אימונים שמורים</p>'; return; }
+    workoutHistory.forEach(workout => {
+        const d = new Date(workout.date);
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `<div class="history-date">${d.toLocaleDateString('he-IL')} – ${d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</div><div>${workout.exercises.length} תרגילים</div>`;
+        item.addEventListener('click', () => { currentWorkout = workout; displayWorkout(workout); document.getElementById('historyContainer').classList.remove('active'); });
+        el.appendChild(item);
+    });
+}
+function printWorkout() { if (!currentWorkout) { showAlert('אין אימון להדפיס', 'warning'); return; } window.print(); }
+async function shareWorkout() {
+    if (!currentWorkout) { showAlert('אין אימון לשתף', 'warning'); return; }
+    const text = `האימון שלי מ-YZ Exercise:\n\n${currentWorkout.exercises.map((e,i)=>`${i+1}. ${e.name} – ${e.muscle}`).join('\n')}`;
+    if (navigator.share) { try { await navigator.share({title:'YZ Exercise',text}); showAlert('✅ שותף!','success'); } catch{} }
+    else { navigator.clipboard.writeText(text).then(()=>showAlert('📋 הועתק','success')); }
+}
+
+const printStyle = document.createElement('style');
+printStyle.textContent = `@media print{body *{visibility:hidden}#workoutContainer,#workoutContainer *{visibility:visible}#workoutContainer{position:absolute;left:0;top:0;width:100%}.export-buttons{display:none!important}}`;
+document.head.appendChild(printStyle);
+
+// ═══════════════════════════════════════════════════
+//  POSE ANALYZER — STATE & EXERCISE DEFINITIONS
+// ═══════════════════════════════════════════════════
+const poseState = {
+    exercise: 'squat',
+    running: false,
+    reps: 0,
+    phase: 'up',
+    facingUser: true,
+    poseReady: false,
+    session: { startTime: null, goodReps: 0, badReps: 0, cues: {} }
 };
 
-// ═══════════════════════════════════════════════════════════
-//  EXERCISE DEFINITIONS
-// ═══════════════════════════════════════════════════════════
-const EXERCISES = {
-  squat: {
-    name: 'סקוואט',
-    metrics: [
-      { id: 'knee', label: 'ברך', lbl2: 'ברך' },
-      { id: 'hip',  label: 'ירך', lbl2: 'ירך' },
-      { id: 'back', label: 'גב',  lbl2: 'גב'  }
-    ],
-    analyze(lms) {
-      const rHip   = lm(lms, 24), rKnee = lm(lms, 26), rAnkle = lm(lms, 28);
-      const lHip   = lm(lms, 23), lKnee = lm(lms, 25), lAnkle = lm(lms, 27);
-      const rShou  = lm(lms, 12), lShou  = lm(lms, 11);
+const POSE_EXERCISES = {
+    squat: {
+        name: 'סקוואט',
+        metrics: [
+            { id:'knee', label:'זווית ברך' },
+            { id:'hip',  label:'זווית ירך' },
+            { id:'back', label:'טיית גב'   }
+        ],
+        analyze(lms) {
+            const L = i => lms[i];
+            const ang = (A,B,C) => {
+                const BA={x:A.x-B.x,y:A.y-B.y}, BC={x:C.x-B.x,y:C.y-B.y};
+                const d = BA.x*BC.x+BA.y*BC.y, m = Math.hypot(BA.x,BA.y)*Math.hypot(BC.x,BC.y);
+                return m ? Math.round(Math.acos(Math.min(1,Math.max(-1,d/m)))*180/Math.PI) : 0;
+            };
+            const kneeA = Math.round((ang(L(24),L(26),L(28))+ang(L(23),L(25),L(27)))/2);
+            const hipA  = Math.round((ang(L(12),L(24),L(26))+ang(L(11),L(23),L(25)))/2);
+            const msx=(L(12).x+L(11).x)/2, msy=(L(12).y+L(11).y)/2;
+            const mhx=(L(24).x+L(23).x)/2, mhy=(L(24).y+L(23).y)/2;
+            const backA = Math.round(Math.abs(Math.atan2(msx-mhx,msy-mhy)*180/Math.PI));
 
-      const kneeAngleR = angle3(rHip, rKnee, rAnkle);
-      const kneeAngleL = angle3(lHip, lKnee, lAnkle);
-      const kneeAngle  = Math.round((kneeAngleR + kneeAngleL) / 2);
+            const cues = []; let quality = 'good';
+            if (kneeA < 70)        cues.push('🟢 עומק מצוין!');
+            else if (kneeA < 100)  { quality='warn'; cues.push('🟡 רד קצת יותר'); }
+            else                   { quality='bad';  cues.push('🔴 עומק לא מספיק'); }
+            if (backA > 40)        { quality='bad';  cues.push('🔴 גב קדמי – הכנס חזה'); }
+            else if (backA > 25)   { if(quality==='good')quality='warn'; cues.push('🟡 שים לב לגב זקוף'); }
 
-      const hipAngleR = angle3(rShou, rHip, rKnee);
-      const hipAngleL = angle3(lShou, lHip, lKnee);
-      const hipAngle  = Math.round((hipAngleR + hipAngleL) / 2);
-
-      // Back vertical: shoulder - hip - knee angle from vertical
-      const midShouX = (rShou.x + lShou.x) / 2, midShouY = (rShou.y + lShou.y) / 2;
-      const midHipX  = (rHip.x  + lHip.x)  / 2, midHipY  = (rHip.y + lHip.y)  / 2;
-      const backAngle = Math.round(Math.abs(
-        Math.atan2(midShouX - midHipX, midShouY - midHipY) * 180 / Math.PI
-      ));
-
-      const cues = [];
-      let quality = 'good';
-
-      if (kneeAngle < 70) { cues.push('🟢 עומק מצוין!'); }
-      else if (kneeAngle < 100) { quality = 'warn'; cues.push('🟡 רד קצת יותר'); }
-      else { quality = 'bad'; cues.push('🔴 עומק לא מספיק'); }
-
-      if (backAngle > 40) { quality = 'bad'; cues.push('🔴 גב קדמי – הכנס חזה'); }
-      else if (backAngle > 25) { if (quality === 'good') quality = 'warn'; cues.push('🟡 שים לב לגב זקוף'); }
-
-      // phase detection
-      const isDown = kneeAngle < 120;
-      let repCounted = false;
-      if (isDown && state.phase === 'up') {
-        state.phase = 'down';
-      } else if (!isDown && state.phase === 'down') {
-        state.phase = 'up';
-        repCounted = true;
-        if (quality === 'good') state.session.goodReps++;
-        else state.session.badReps++;
-        cues.forEach(c => { state.session.cues[c] = (state.session.cues[c] || 0) + 1; });
-      }
-
-      return {
-        repCounted,
-        quality,
-        cues,
-        metrics: {
-          knee: { val: kneeAngle,  unit: '°', label: 'זווית ברך',  quality: kneeAngle < 100 ? 'good' : kneeAngle < 130 ? 'warn' : 'bad', bar: Math.max(0, Math.min(100, 100 - (kneeAngle - 70) / 1.1)) },
-          hip:  { val: hipAngle,   unit: '°', label: 'זווית ירך',  quality: hipAngle < 70 ? 'good' : 'warn', bar: Math.max(0, Math.min(100, 100 - (hipAngle - 50) / 1.3)) },
-          back: { val: backAngle,  unit: '°', label: 'טיית גב',    quality: backAngle < 25 ? 'good' : backAngle < 40 ? 'warn' : 'bad', bar: Math.max(0, Math.min(100, 100 - backAngle * 2.2)) }
+            const isDown = kneeA < 120;
+            let repCounted = false;
+            if (isDown && poseState.phase==='up') poseState.phase='down';
+            else if (!isDown && poseState.phase==='down') {
+                poseState.phase='up'; repCounted=true;
+                if (quality==='good') poseState.session.goodReps++; else poseState.session.badReps++;
+                cues.forEach(c => { poseState.session.cues[c]=(poseState.session.cues[c]||0)+1; });
+            }
+            return { repCounted, quality, cues, metrics: {
+                knee: { val:kneeA+'°', quality: kneeA<100?'good':kneeA<130?'warn':'bad', bar: Math.max(0,Math.min(100,100-(kneeA-70)/1.1)) },
+                hip:  { val:hipA+'°',  quality: hipA<70?'good':'warn',                   bar: Math.max(0,Math.min(100,100-(hipA-50)/1.3))  },
+                back: { val:backA+'°', quality: backA<25?'good':backA<40?'warn':'bad',   bar: Math.max(0,Math.min(100,100-backA*2.2))       }
+            }};
         }
-      };
-    }
-  },
+    },
 
-  pushup: {
-    name: 'Push-up',
-    metrics: [
-      { id: 'elbow', label: 'מרפק', lbl2: 'מרפק' },
-      { id: 'body',  label: 'גוף',  lbl2: 'קו גוף' },
-      { id: 'depth', label: 'עומק', lbl2: 'עומק'  }
-    ],
-    analyze(lms) {
-      const rShou  = lm(lms, 12), rElb = lm(lms, 14), rWrist = lm(lms, 16);
-      const lShou  = lm(lms, 11), lElb = lm(lms, 13), lWrist = lm(lms, 15);
-      const rHip   = lm(lms, 24), lHip = lm(lms, 23);
-      const rAnk   = lm(lms, 28), lAnk = lm(lms, 27);
+    pushup: {
+        name: 'Push-up',
+        metrics: [
+            { id:'elbow', label:'מרפק'    },
+            { id:'body',  label:'קו גוף'  },
+            { id:'depth', label:'עומק %'  }
+        ],
+        analyze(lms) {
+            const L = i => lms[i];
+            const ang = (A,B,C) => {
+                const BA={x:A.x-B.x,y:A.y-B.y}, BC={x:C.x-B.x,y:C.y-B.y};
+                const d=BA.x*BC.x+BA.y*BC.y, m=Math.hypot(BA.x,BA.y)*Math.hypot(BC.x,BC.y);
+                return m?Math.round(Math.acos(Math.min(1,Math.max(-1,d/m)))*180/Math.PI):0;
+            };
+            const elbA = Math.round((ang(L(12),L(14),L(16))+ang(L(11),L(13),L(15)))/2);
+            const bodyA = Math.round((ang(L(12),L(24),L(28))+ang(L(11),L(23),L(27)))/2);
+            const dev = Math.abs(180-bodyA);
+            const depth = Math.max(0,Math.min(100,Math.round((180-elbA))));
 
-      const elbR = angle3(rShou, rElb, rWrist);
-      const elbL = angle3(lShou, lElb, lWrist);
-      const elbAngle = Math.round((elbR + elbL) / 2);
+            const cues=[]; let quality='good';
+            if (elbA<80)        cues.push('🟢 עומק מצוין!');
+            else if (elbA<130)  { quality='warn'; cues.push('🟡 רד קצת יותר'); }
+            else                { quality='bad';  cues.push('🔴 עומק לא מספיק'); }
+            if (dev>25)         { quality='bad';  cues.push('🔴 ירכיים גבוהות מדי'); }
+            else if (dev>12)    { if(quality==='good')quality='warn'; cues.push('🟡 שמור על קו ישר'); }
+            else                cues.push('🟢 קו גוף מושלם!');
 
-      // body line (shoulder - hip - ankle)
-      const bodyR = angle3(rShou, rHip, rAnk);
-      const bodyL = angle3(lShou, lHip, lAnk);
-      const bodyAngle = Math.round((bodyR + bodyL) / 2);
-      const deviation = Math.abs(180 - bodyAngle);
-
-      const cues = [];
-      let quality = 'good';
-
-      // elbow check
-      if (elbAngle < 80)       { cues.push('🟢 עומק מצוין!'); }
-      else if (elbAngle < 130) { quality = 'warn'; cues.push('🟡 רד קצת יותר'); }
-      else                     { quality = 'bad';  cues.push('🔴 עומק לא מספיק'); }
-
-      // body line
-      if (deviation > 25) { quality = 'bad'; cues.push('🔴 ירכיים גבוהות/נמוכות'); }
-      else if (deviation > 12) { if (quality === 'good') quality = 'warn'; cues.push('🟡 שמור על קו ישר'); }
-      else { cues.push('🟢 קו גוף מושלם!'); }
-
-      const isDown = elbAngle < 130;
-      let repCounted = false;
-      if (isDown && state.phase === 'up') {
-        state.phase = 'down';
-      } else if (!isDown && state.phase === 'down') {
-        state.phase = 'up';
-        repCounted = true;
-        if (quality === 'good') state.session.goodReps++;
-        else state.session.badReps++;
-        cues.forEach(c => { state.session.cues[c] = (state.session.cues[c] || 0) + 1; });
-      }
-
-      const depth = Math.max(0, Math.min(100, Math.round((180 - elbAngle) / 1.0)));
-
-      return {
-        repCounted,
-        quality,
-        cues,
-        metrics: {
-          elbow: { val: elbAngle,   unit: '°', label: 'מרפק', quality: elbAngle < 90 ? 'good' : elbAngle < 130 ? 'warn' : 'bad', bar: Math.max(0,Math.min(100, (180-elbAngle)/1.0)) },
-          body:  { val: deviation,  unit: '°', label: 'קו גוף',  quality: deviation < 12 ? 'good' : deviation < 25 ? 'warn' : 'bad', bar: Math.max(0,Math.min(100,100-deviation*3.5)) },
-          depth: { val: depth,      unit: '%', label: 'עומק',    quality: depth > 55 ? 'good' : depth > 30 ? 'warn' : 'bad', bar: depth }
+            const isDown = elbA<130;
+            let repCounted=false;
+            if (isDown && poseState.phase==='up') poseState.phase='down';
+            else if (!isDown && poseState.phase==='down') {
+                poseState.phase='up'; repCounted=true;
+                if(quality==='good') poseState.session.goodReps++; else poseState.session.badReps++;
+                cues.forEach(c=>{ poseState.session.cues[c]=(poseState.session.cues[c]||0)+1; });
+            }
+            return { repCounted, quality, cues, metrics: {
+                elbow: { val:elbA+'°',  quality: elbA<90?'good':elbA<130?'warn':'bad', bar: Math.max(0,Math.min(100,(180-elbA))) },
+                body:  { val:dev+'°',   quality: dev<12?'good':dev<25?'warn':'bad',    bar: Math.max(0,Math.min(100,100-dev*3.5)) },
+                depth: { val:depth+'%', quality: depth>55?'good':depth>30?'warn':'bad', bar: depth }
+            }};
         }
-      };
     }
-  }
 };
 
-// ═══════════════════════════════════════════════════════════
-//  DOM REFS
-// ═══════════════════════════════════════════════════════════
-const $  = id => document.getElementById(id);
-const videoEl      = $('videoEl');
-const poseCanvas   = $('poseCanvas');
-const ctx          = poseCanvas.getContext('2d');
-const feedbackPill = $('feedbackPill');
-const repCountEl   = $('repCount');
-const metricsRow   = $('metricsRow');
-const angleDisplay = $('angleDisplay');
-const chipKnee     = $('chipKnee');
-const chipKneeVal  = $('chipKneeVal');
-const chipKneeLbl  = $('chipKneeLbl');
-const chipHip      = $('chipHip');
-const chipHipVal   = $('chipHipVal');
-const chipHipLbl   = $('chipHipLbl');
-const hud          = $('hud');
-const cameraWrap   = $('cameraWrap');
-const startOverlay = $('startOverlay');
-const summaryModal = $('summaryModal');
-const loadingScreen= $('loadingScreen');
-
-// ═══════════════════════════════════════════════════════════
-//  MEDIAPIPE SETUP
-// ═══════════════════════════════════════════════════════════
-let pose = null;
-let camera = null;
-let currentStream = null;
+// ═══════════════════════════════════════════════════
+//  MEDIAPIPE
+// ═══════════════════════════════════════════════════
+let mpPose = null, mpCamera = null, currentStream = null;
 
 async function initPose() {
-  pose = new Pose({
-    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
-  });
-  pose.setOptions({
-    modelComplexity: 1,
-    smoothLandmarks: true,
-    enableSegmentation: false,
-    smoothSegmentation: false,
-    minDetectionConfidence: 0.55,
-    minTrackingConfidence: 0.55
-  });
-  pose.onResults(onResults);
-  await pose.initialize();
-  loadingScreen.classList.add('hidden');
+    mpPose = new Pose({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}` });
+    mpPose.setOptions({ modelComplexity:1, smoothLandmarks:true, enableSegmentation:false, minDetectionConfidence:0.55, minTrackingConfidence:0.55 });
+    mpPose.onResults(onPoseResults);
+    await mpPose.initialize();
+    poseState.poseReady = true;
+    document.getElementById('poseLoadingOverlay').classList.add('hidden');
 }
 
-// ═══════════════════════════════════════════════════════════
-//  CAMERA
-// ═══════════════════════════════════════════════════════════
-async function startCamera() {
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-  }
-  const facingMode = state.facingUser ? 'user' : 'environment';
-  try {
-    currentStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode, width: { ideal: 640 }, height: { ideal: 1280 } },
-      audio: false
-    });
-    videoEl.srcObject = currentStream;
-    await videoEl.play();
+async function startPoseCamera() {
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    const facingMode = poseState.facingUser ? 'user' : 'environment';
+    try {
+        currentStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode, width:{ideal:1280}, height:{ideal:720} }, audio: false
+        });
+        const vid = document.getElementById('poseVideo');
+        vid.srcObject = currentStream;
+        await vid.play();
+        vid.style.transform = poseState.facingUser ? 'scaleX(-1)' : 'scaleX(1)';
+        document.getElementById('poseCanvas').style.transform = poseState.facingUser ? 'scaleX(-1)' : 'scaleX(1)';
 
-    // mirror only for front camera
-    videoEl.style.transform = state.facingUser ? 'scaleX(-1)' : 'scaleX(1)';
-    poseCanvas.style.transform = state.facingUser ? 'scaleX(-1)' : 'scaleX(1)';
-
-    if (camera) camera.stop();
-    camera = new Camera(videoEl, {
-      onFrame: async () => {
-        if (state.running) await pose.send({ image: videoEl });
-      },
-      width: 640, height: 1280
-    });
-    camera.start();
-  } catch (err) {
-    alert('לא ניתן לגשת למצלמה. אנא אשר הרשאות.');
-    console.error(err);
-  }
+        if (mpCamera) mpCamera.stop();
+        mpCamera = new Camera(vid, {
+            onFrame: async () => { if (poseState.running) await mpPose.send({ image: vid }); },
+            width: 640, height: 960
+        });
+        mpCamera.start();
+    } catch { alert('לא ניתן לגשת למצלמה. אנא אשר הרשאות.'); }
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  POSE RESULTS
-// ═══════════════════════════════════════════════════════════
-let lastCues = [];
+// ═══════════════════════════════════════════════════
+let lastPoseCue = '';
 
-function onResults(results) {
-  // Resize canvas to video
-  poseCanvas.width  = results.image.width;
-  poseCanvas.height = results.image.height;
+function onPoseResults(results) {
+    const canvas = document.getElementById('poseCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width  = results.image.width;
+    canvas.height = results.image.height;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
-
-  if (!results.poseLandmarks) {
-    setFeedback('⚠️ לא זוהה גוף – עמוד בפריים', 'warn');
-    return;
-  }
-
-  const lms = results.poseLandmarks;
-  const ex  = EXERCISES[state.exercise];
-  const analysis = ex.analyze(lms);
-
-  // Draw skeleton
-  drawSkeleton(lms, analysis.quality);
-
-  // Update UI
-  updateMetrics(analysis.metrics);
-  updateAngleChips(analysis.metrics);
-
-  const cue = analysis.cues[0] || '✅ המשך כך!';
-  const sameAsBefore = lastCues[0] === cue;
-  if (!sameAsBefore) {
-    lastCues = analysis.cues;
-    setFeedback(cue, analysis.quality);
-  }
-
-  if (analysis.repCounted) {
-    state.reps++;
-    state.session.repTimestamps.push(Date.now());
-    repCountEl.textContent = state.reps;
-    repCountEl.classList.add('flash');
-    cameraWrap.classList.add('flash-frame');
-    setTimeout(() => {
-      repCountEl.classList.remove('flash');
-      cameraWrap.classList.remove('flash-frame');
-    }, 400);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  SKELETON DRAWING
-// ═══════════════════════════════════════════════════════════
-const POSE_CONNECTIONS = [
-  [11,12],[11,13],[13,15],[12,14],[14,16],
-  [11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28]
-];
-
-function qualityColor(q) {
-  if (q === 'good') return '#06d6a0';
-  if (q === 'warn') return '#ffd23f';
-  return '#ff4757';
-}
-
-function drawSkeleton(lms, overallQuality) {
-  const W = poseCanvas.width, H = poseCanvas.height;
-  const color = qualityColor(overallQuality);
-
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = color;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 10;
-
-  // connections
-  for (const [a, b] of POSE_CONNECTIONS) {
-    const pA = lms[a], pB = lms[b];
-    if ((pA.visibility || 0) < 0.4 || (pB.visibility || 0) < 0.4) continue;
-    ctx.beginPath();
-    ctx.moveTo(pA.x * W, pA.y * H);
-    ctx.lineTo(pB.x * W, pB.y * H);
-    ctx.stroke();
-  }
-
-  // joints
-  const joints = [11,12,13,14,15,16,23,24,25,26,27,28];
-  for (const i of joints) {
-    const p = lms[i];
-    if ((p.visibility || 0) < 0.4) continue;
-    ctx.beginPath();
-    ctx.arc(p.x * W, p.y * H, 8, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 16;
-    ctx.fill();
-  }
-  ctx.shadowBlur = 0;
-}
-
-// ═══════════════════════════════════════════════════════════
-//  UI HELPERS
-// ═══════════════════════════════════════════════════════════
-function setFeedback(text, type) {
-  feedbackPill.textContent = text;
-  feedbackPill.className = `feedback-pill ${type === 'good' ? 'good' : type === 'warn' ? 'warn' : type === 'bad' ? 'bad' : 'idle'}`;
-}
-
-function updateMetrics(metrics) {
-  const keys = Object.keys(metrics);
-  const cards = metricsRow.querySelectorAll('.metric-card');
-  keys.forEach((k, i) => {
-    const m = metrics[k];
-    const card = cards[i];
-    if (!card) return;
-    card.className = `metric-card ${m.quality}`;
-    card.querySelector('.metric-val').textContent = m.val + m.unit;
-    const bar = card.querySelector('.metric-bar');
-    if (bar) {
-      bar.style.width = m.bar + '%';
-      bar.style.background = qualityColor(m.quality);
+    if (!results.poseLandmarks) {
+        setPoseFeedback('⚠️ לא זוהה גוף – עמוד בפריים', 'warn'); return;
     }
-  });
+
+    const lms = results.poseLandmarks;
+    const ex  = POSE_EXERCISES[poseState.exercise];
+    const res = ex.analyze(lms);
+
+    drawPoseSkeleton(ctx, canvas, lms, res.quality);
+    updatePoseMetrics(res.metrics);
+
+    const cue = res.cues[0] || '✅ המשך כך!';
+    if (cue !== lastPoseCue) { lastPoseCue = cue; setPoseFeedback(cue, res.quality); }
+
+    if (res.repCounted) {
+        poseState.reps++;
+        const el = document.getElementById('poseRepNum');
+        el.textContent = poseState.reps;
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 350);
+    }
 }
 
-function updateAngleChips(metrics) {
-  const keys = Object.keys(metrics);
-  if (keys[0]) {
-    const m0 = metrics[keys[0]];
-    chipKneeVal.textContent = m0.val + m0.unit;
-    chipKneeLbl.textContent = m0.label;
-    chipKnee.className = `angle-chip ${m0.quality}`;
-  }
-  if (keys[1]) {
-    const m1 = metrics[keys[1]];
-    chipHipVal.textContent = m1.val + m1.unit;
-    chipHipLbl.textContent = m1.label;
-    chipHip.className = `angle-chip ${m1.quality}`;
-  }
+// ═══════════════════════════════════════════════════
+//  SKELETON DRAWING
+// ═══════════════════════════════════════════════════
+const CONNECTIONS = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28]];
+
+function qualityColor(q) { return q==='good'?'#06d6a0':q==='warn'?'#ffd23f':'#ff4757'; }
+
+function drawPoseSkeleton(ctx, canvas, lms, quality) {
+    const W=canvas.width, H=canvas.height, color=qualityColor(quality);
+    ctx.lineWidth=4; ctx.strokeStyle=color; ctx.shadowColor=color; ctx.shadowBlur=12;
+    for (const [a,b] of CONNECTIONS) {
+        const pA=lms[a], pB=lms[b];
+        if ((pA.visibility||0)<0.4||(pB.visibility||0)<0.4) continue;
+        ctx.beginPath(); ctx.moveTo(pA.x*W,pA.y*H); ctx.lineTo(pB.x*W,pB.y*H); ctx.stroke();
+    }
+    ctx.shadowBlur=18;
+    [11,12,13,14,15,16,23,24,25,26,27,28].forEach(i => {
+        const p=lms[i]; if((p.visibility||0)<0.4) return;
+        ctx.beginPath(); ctx.arc(p.x*W,p.y*H,7,0,Math.PI*2);
+        ctx.fillStyle=color; ctx.fill();
+    });
+    ctx.shadowBlur=0;
 }
 
-function buildMetricsRow() {
-  const ex = EXERCISES[state.exercise];
-  metricsRow.innerHTML = ex.metrics.map(m => `
-    <div class="metric-card" id="mc-${m.id}">
-      <div class="metric-val" id="mv-${m.id}">—</div>
-      <div class="metric-lbl">${m.label}</div>
-      <div class="metric-bar-wrap"><div class="metric-bar" id="mb-${m.id}" style="width:0%"></div></div>
-    </div>
-  `).join('');
+// ═══════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════
+function setPoseFeedback(text, quality) {
+    const el = document.getElementById('poseFeedbackPill');
+    el.textContent = text;
+    el.className = `pose-feedback-pill ${quality==='good'?'good':quality==='warn'?'warn':quality==='bad'?'bad':''}`;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  SESSION CONTROL
-// ═══════════════════════════════════════════════════════════
-function startSession() {
-  state.running = true;
-  state.reps = 0;
-  state.phase = 'up';
-  state.session = { startTime: Date.now(), repTimestamps: [], goodReps: 0, badReps: 0, cues: {} };
-  lastCues = [];
-
-  repCountEl.textContent = '0';
-  buildMetricsRow();
-  startOverlay.classList.add('hidden');
-  angleDisplay.style.display = 'flex';
-  hud.style.display = 'flex';
-  setFeedback('🎯 ' + EXERCISES[state.exercise].name + ' – בוא נתחיל!', 'idle');
+function buildPoseMetrics() {
+    const ex = POSE_EXERCISES[poseState.exercise];
+    document.getElementById('poseMetrics').innerHTML = ex.metrics.map(m => `
+        <div class="pose-metric-card" id="pmc-${m.id}">
+            <div class="pose-metric-top">
+                <span class="pose-metric-name">${m.label}</span>
+                <span class="pose-metric-val" id="pmv-${m.id}">—</span>
+            </div>
+            <div class="pose-bar-wrap"><div class="pose-bar" id="pmb-${m.id}" style="width:0%"></div></div>
+        </div>
+    `).join('');
 }
 
-function stopSession() {
-  state.running = false;
-  showSummary();
+function updatePoseMetrics(metrics) {
+    Object.entries(metrics).forEach(([id, m]) => {
+        const card = document.getElementById('pmc-'+id);
+        const val  = document.getElementById('pmv-'+id);
+        const bar  = document.getElementById('pmb-'+id);
+        if (!card) return;
+        card.className = `pose-metric-card ${m.quality}`;
+        val.textContent = m.val;
+        bar.style.width = m.bar + '%';
+        bar.style.background = qualityColor(m.quality);
+    });
 }
 
-function resetReps() {
-  state.reps = 0;
-  state.phase = 'up';
-  repCountEl.textContent = '0';
-  state.session.goodReps = 0;
-  state.session.badReps = 0;
-  state.session.repTimestamps = [];
-  state.session.cues = {};
-  state.session.startTime = Date.now();
+// ═══════════════════════════════════════════════════
+//  SESSION
+// ═══════════════════════════════════════════════════
+function startPoseSession() {
+    poseState.running=true; poseState.reps=0; poseState.phase='up'; lastPoseCue='';
+    poseState.session={ startTime:Date.now(), goodReps:0, badReps:0, cues:{} };
+    document.getElementById('poseRepNum').textContent='0';
+    document.getElementById('posePanelTitle').textContent = '📷 ' + POSE_EXERCISES[poseState.exercise].name;
+    buildPoseMetrics();
+    document.getElementById('poseActiveUI').style.display='block';
+    document.getElementById('poseSummary').classList.remove('visible');
+    setPoseFeedback('🎯 התחל את התרגיל!','');
 }
 
-// ═══════════════════════════════════════════════════════════
-//  SUMMARY
-// ═══════════════════════════════════════════════════════════
-function showSummary() {
-  const duration = state.session.startTime
-    ? Math.round((Date.now() - state.session.startTime) / 1000)
-    : 0;
-  const mins = Math.floor(duration / 60), secs = duration % 60;
-  const durationStr = `${mins}:${String(secs).padStart(2,'0')}`;
-
-  const goodPct = state.reps > 0 ? Math.round(state.session.goodReps / state.reps * 100) : 0;
-
-  $('summaryStats').innerHTML = `
-    <div class="summary-stat"><div class="summary-stat-val">${state.reps}</div><div class="summary-stat-lbl">חזרות סה"כ</div></div>
-    <div class="summary-stat"><div class="summary-stat-val">${goodPct}%</div><div class="summary-stat-lbl">חזרות טובות</div></div>
-    <div class="summary-stat"><div class="summary-stat-val">${state.session.goodReps}</div><div class="summary-stat-lbl">מצוין ✅</div></div>
-    <div class="summary-stat"><div class="summary-stat-val">${durationStr}</div><div class="summary-stat-lbl">זמן</div></div>
-  `;
-
-  // top cues
-  const topCues = Object.entries(state.session.cues)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  $('summaryFeedback').innerHTML = topCues.length
-    ? topCues.map(([cue, n]) => `<li><span>${cue}</span><span style="margin-right:auto;color:var(--muted);font-size:.8rem">x${n}</span></li>`).join('')
-    : '<li>💪 ביצוע מצוין – המשך כך!</li>';
-
-  summaryModal.classList.add('visible');
+function stopPoseSession() {
+    poseState.running=false;
+    if (currentStream) currentStream.getTracks().forEach(t=>t.stop());
+    showPoseSummary();
 }
 
-function hideSummary() {
-  summaryModal.classList.remove('visible');
-  hud.style.display = 'none';
-  angleDisplay.style.display = 'none';
-  startOverlay.classList.remove('hidden');
-  setFeedback('ממתין לזיהוי…', 'idle');
+function resetPoseReps() {
+    poseState.reps=0; poseState.phase='up'; lastPoseCue='';
+    poseState.session.goodReps=0; poseState.session.badReps=0; poseState.session.cues={}; poseState.session.startTime=Date.now();
+    document.getElementById('poseRepNum').textContent='0';
 }
 
-// ═══════════════════════════════════════════════════════════
-//  EVENT LISTENERS
-// ═══════════════════════════════════════════════════════════
-document.querySelectorAll('.ex-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.exercise = btn.dataset.ex;
-  });
+function showPoseSummary() {
+    const dur = poseState.session.startTime ? Math.round((Date.now()-poseState.session.startTime)/1000) : 0;
+    const m=Math.floor(dur/60), s=dur%60;
+    const goodPct = poseState.reps>0 ? Math.round(poseState.session.goodReps/poseState.reps*100) : 0;
+
+    document.getElementById('poseSummaryGrid').innerHTML = `
+        <div class="pose-summary-stat"><div class="pose-summary-stat-val">${poseState.reps}</div><div class="pose-summary-stat-lbl">חזרות</div></div>
+        <div class="pose-summary-stat"><div class="pose-summary-stat-val">${goodPct}%</div><div class="pose-summary-stat-lbl">חזרות טובות</div></div>
+        <div class="pose-summary-stat"><div class="pose-summary-stat-val">${poseState.session.goodReps}</div><div class="pose-summary-stat-lbl">✅ מצוין</div></div>
+        <div class="pose-summary-stat"><div class="pose-summary-stat-val">${m}:${String(s).padStart(2,'0')}</div><div class="pose-summary-stat-lbl">זמן</div></div>
+    `;
+
+    const topCues = Object.entries(poseState.session.cues).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    document.getElementById('poseSummaryCues').innerHTML = topCues.length
+        ? topCues.map(([cue,n])=>`<li>${cue} <span style="margin-right:auto;color:#aaa;font-size:.8rem">x${n}</span></li>`).join('')
+        : '<li>💪 ביצוע מצוין!</li>';
+
+    document.getElementById('poseActiveUI').style.display='none';
+    document.getElementById('poseSummary').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════
+//  POSE EVENT LISTENERS
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.pose-ex-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.pose-ex-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        poseState.exercise = btn.dataset.ex;
+    });
 });
 
-$('startBtn').addEventListener('click', async () => {
-  await startCamera();
-  startSession();
+document.getElementById('poseStartBtn').addEventListener('click', async () => {
+    const overlay = document.getElementById('poseStartOverlay');
+    overlay.classList.add('hidden');
+
+    if (!poseState.poseReady) {
+        // show inline loading while mediapipe inits
+        document.getElementById('poseLoadingOverlay').classList.remove('hidden');
+        await initPose();
+    }
+
+    await startPoseCamera();
+    startPoseSession();
 });
 
-$('flipBtn').addEventListener('click', async () => {
-  state.facingUser = !state.facingUser;
-  await startCamera();
+document.getElementById('poseFlipBtn').addEventListener('click', async () => {
+    poseState.facingUser = !poseState.facingUser;
+    if (poseState.running) await startPoseCamera();
 });
 
-$('stopBtn').addEventListener('click', stopSession);
-$('resetRepBtn').addEventListener('click', resetReps);
-$('summaryClose').addEventListener('click', hideSummary);
-$('summaryRestart').addEventListener('click', () => {
-  hideSummary();
+// ── ZOOM ──
+let zoomLevel = 1.0;
+const ZOOM_STEP = 0.15, ZOOM_MIN = 0.5, ZOOM_MAX = 2.0;
+
+function applyZoom() {
+    const vid    = document.getElementById('poseVideo');
+    const canvas = document.getElementById('poseCanvas');
+    const mirror = poseState.facingUser ? -1 : 1;
+    const t = `scaleX(${mirror * zoomLevel}) scaleY(${zoomLevel})`;
+    vid.style.transform    = t;
+    canvas.style.transform = t;
+    document.getElementById('zoomLabel').textContent = zoomLevel.toFixed(1) + '×';
+}
+
+document.getElementById('zoomIn').addEventListener('click', () => {
+    zoomLevel = Math.min(ZOOM_MAX, parseFloat((zoomLevel - ZOOM_STEP).toFixed(2)));
+    // zooming "in" means seeing more = scale down
+    applyZoom();
+});
+document.getElementById('zoomOut').addEventListener('click', () => {
+    zoomLevel = Math.max(ZOOM_MIN, parseFloat((zoomLevel + ZOOM_STEP).toFixed(2)));
+    applyZoom();
 });
 
-// ═══════════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════════
-initPose().catch(err => {
-  console.error('MediaPipe init failed:', err);
-  loadingScreen.querySelector('.loader-text').textContent = '⚠️ שגיאה בטעינת המנוע. רענן את הדף.';
+// reset zoom on camera start
+const _origStartCam = startPoseCamera;
+async function startPoseCameraWrapped() {
+    await _origStartCam();
+    zoomLevel = 1.0;
+    applyZoom();
+}
+document.getElementById('poseStartBtn').removeEventListener('click', null);
+
+document.getElementById('poseStopBtn').addEventListener('click', stopPoseSession);
+document.getElementById('poseResetBtn').addEventListener('click', resetPoseReps);
+document.getElementById('poseRestartBtn').addEventListener('click', () => {
+    document.getElementById('poseSummary').classList.remove('visible');
+    document.getElementById('poseActiveUI').style.display='block';
+    document.getElementById('poseStartOverlay').classList.remove('hidden');
+});
+
+// ═══════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadExercises();
+    // Preload MediaPipe in background after page ready
+    setTimeout(() => {
+        if (!poseState.poseReady) {
+            initPose().catch(e => console.warn('MediaPipe preload failed:', e));
+        }
+    }, 2000);
 });
 </script>
 </body>
