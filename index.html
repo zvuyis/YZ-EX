@@ -434,6 +434,96 @@
         .pose-summary-cues { list-style: none; display: flex; flex-direction: column; gap: 6px; }
         .pose-summary-cues li { font-size: 0.85rem; background: white; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; }
 
+
+        /* ── POSITION GUIDE BANNER ── */
+        .pose-position-banner {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            z-index: 9; display: none;
+            background: rgba(10,10,15,0.88); backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,210,63,0.6); border-radius: 40px;
+            padding: 10px 20px; gap: 10px;
+            align-items: center;
+            font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 0.85rem;
+            color: #ffd23f; white-space: nowrap; pointer-events: none;
+            animation: bannerPulse 1.5s ease-in-out infinite;
+        }
+        .pose-position-banner.visible { display: flex; }
+        .pose-position-banner.good { border-color: rgba(6,214,160,0.6); color: #06d6a0; animation: none; }
+        .ppb-icon { font-size: 1.2rem; }
+        @keyframes bannerPulse {
+            0%,100% { opacity: 1; } 50% { opacity: 0.6; }
+        }
+
+        /* ── SILHOUETTE GUIDE (on canvas, drawn by JS) ── */
+        /* camera col needs overflow visible for guide labels */
+        .pose-camera-col { overflow: hidden; }
+
+
+        /* ── CAMERA PLACEMENT GUIDE (in start overlay) ── */
+        .pose-placement-guide {
+            background: rgba(255,255,255,0.08);
+            border: 1.5px solid rgba(255,255,255,0.15);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex; flex-direction: column; gap: 8px;
+            max-width: 280px; width: 100%;
+        }
+        .ppg-row {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .ppg-icon { font-size: 1rem; flex-shrink: 0; }
+        .ppg-text {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.85rem; font-weight: 600;
+        }
+
+
+        /* ── MUTE BUTTON positioning ── */
+        .pose-flip-btn {
+            position: absolute; bottom: 14px; left: 14px; z-index: 9;
+        }
+
+        /* ── COUNTDOWN OVERLAY ── */
+        .pose-countdown {
+            position: absolute; inset: 0; z-index: 15;
+            display: none;
+            flex-direction: column;
+            align-items: center; justify-content: center; gap: 16px;
+            background: rgba(10,10,15,0.75); backdrop-filter: blur(4px);
+        }
+        .pose-countdown.active { display: flex; }
+
+        .pose-countdown-num {
+            font-family: 'Rubik', sans-serif;
+            font-weight: 900;
+            font-size: clamp(5rem, 20vw, 9rem);
+            color: #fff;
+            line-height: 1;
+            animation: countPulse 1s ease-out;
+        }
+        @keyframes countPulse {
+            0%   { transform: scale(1.4); opacity: 0.3; }
+            40%  { transform: scale(1.0); opacity: 1;   }
+            85%  { transform: scale(1.0); opacity: 1;   }
+            100% { transform: scale(0.85); opacity: 0;  }
+        }
+
+        .pose-countdown-hint {
+            font-family: 'Rubik', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.75);
+            letter-spacing: 1px;
+        }
+
+        /* ── FRAME-OK FLASH ── */
+        @keyframes frameOkFlash {
+            0%   { box-shadow: inset 0 0 0 4px rgba(6,214,160,0);   }
+            30%  { box-shadow: inset 0 0 0 4px rgba(6,214,160,0.9); }
+            100% { box-shadow: inset 0 0 0 4px rgba(6,214,160,0);   }
+        }
+        .pose-camera-col.frame-ok { animation: frameOkFlash 0.7s ease-out; }
+
         /* ── ANIMATIONS ── */
         @keyframes fadeInDown { from{opacity:0;transform:translateY(-30px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeInLeft { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
@@ -596,8 +686,36 @@
                             <button class="pose-ex-btn active" data-ex="squat">🦵 סקוואט</button>
                             <button class="pose-ex-btn" data-ex="pushup">💪 Push-up</button>
                         </div>
+                        <!-- Camera placement guide -->
+                        <div class="pose-placement-guide" id="posePlacementGuide">
+                            <div class="ppg-row">
+                                <span class="ppg-icon">📐</span>
+                                <span class="ppg-text" id="ppgAngle">מצלמה מהצד (פרופיל 90°)</span>
+                            </div>
+                            <div class="ppg-row">
+                                <span class="ppg-icon">📏</span>
+                                <span class="ppg-text">מרחק: 2–3 מטר מהמצלמה</span>
+                            </div>
+                            <div class="ppg-row">
+                                <span class="ppg-icon">📍</span>
+                                <span class="ppg-text" id="ppgHeight">גובה מצלמה: גובה הירך</span>
+                            </div>
+                        </div>
+
                         <button class="pose-start-btn" id="poseStartBtn">▶ התחל ניתוח</button>
                         <div class="pose-permission-hint">הדפדפן יבקש גישה למצלמה. כל הנתונים נשארים במכשיר בלבד.</div>
+                    </div>
+
+                    <!-- Countdown overlay -->
+                    <div class="pose-countdown" id="poseCountdown">
+                        <div class="pose-countdown-num" id="poseCountdownNum">3</div>
+                        <div class="pose-countdown-hint">לך לעמדה!</div>
+                    </div>
+
+                    <!-- Position guide banner -->
+                    <div class="pose-position-banner" id="posePositionBanner">
+                        <div class="ppb-icon" id="ppbIcon">↔</div>
+                        <div class="ppb-text" id="ppbText">התרחק מהמצלמה עד שכל הגוף בפריים</div>
                     </div>
 
                     <!-- Feedback pill -->
@@ -606,11 +724,14 @@
                     <!-- Flip camera -->
                     <button class="pose-flip-btn" id="poseFlipBtn" title="החלף מצלמה">🔄</button>
 
+                    <!-- Mute toggle -->
+                    <button class="pose-flip-btn" id="poseMuteBtn" title="השתק צלילים" style="bottom:66px">🔔</button>
+
                     <!-- Zoom controls -->
                     <div class="pose-zoom-controls">
-                        <button class="pose-zoom-btn" id="zoomIn">+</button>
-                        <div class="pose-zoom-label" id="zoomLabel">1×</div>
-                        <button class="pose-zoom-btn" id="zoomOut">−</button>
+                        <button class="pose-zoom-btn" id="zoomIn" title="ראה יותר (זום אאוט)">🔍</button>
+                        <div class="pose-zoom-label" id="zoomLabel">1.0×</div>
+                        <button class="pose-zoom-btn" id="zoomOut" title="זום אין">🔎</button>
                     </div>
                 </div>
 
@@ -1043,6 +1164,8 @@ async function startPoseCamera() {
         await vid.play();
         vid.style.transform = poseState.facingUser ? 'scaleX(-1)' : 'scaleX(1)';
         document.getElementById('poseCanvas').style.transform = poseState.facingUser ? 'scaleX(-1)' : 'scaleX(1)';
+        // apply zoom after transform is set
+        setTimeout(() => applyZoom(), 50);
 
         if (mpCamera) mpCamera.stop();
         mpCamera = new Camera(vid, {
@@ -1054,9 +1177,108 @@ async function startPoseCamera() {
 }
 
 // ═══════════════════════════════════════════════════
+//  SILHOUETTE GUIDE DEFINITIONS
+// ═══════════════════════════════════════════════════
+// Each exercise defines where the silhouette should appear (normalized 0-1)
+// and which camera angle is recommended
+const SILHOUETTES = {
+    squat: {
+        cameraAngle: 'צד (פרופיל 90°)',
+        cameraIcon: '↔',
+        // Stick figure key points (x, y normalized 0-1) for standing position
+        // Drawn as a simple skeleton guide the user should match
+        standing: [
+            // head
+            { type: 'circle', x: 0.5, y: 0.08, r: 0.04 },
+            // torso
+            { type: 'line', x1: 0.5, y1: 0.12, x2: 0.5, y2: 0.45 },
+            // left arm
+            { type: 'line', x1: 0.5, y1: 0.18, x2: 0.38, y2: 0.32 },
+            { type: 'line', x1: 0.38, y1: 0.32, x2: 0.32, y2: 0.42 },
+            // right arm
+            { type: 'line', x1: 0.5, y1: 0.18, x2: 0.62, y2: 0.32 },
+            { type: 'line', x1: 0.62, y1: 0.32, x2: 0.68, y2: 0.42 },
+            // left leg
+            { type: 'line', x1: 0.5, y1: 0.45, x2: 0.44, y2: 0.7 },
+            { type: 'line', x1: 0.44, y1: 0.7,  x2: 0.44, y2: 0.94 },
+            // right leg
+            { type: 'line', x1: 0.5, y1: 0.45, x2: 0.56, y2: 0.7 },
+            { type: 'line', x1: 0.56, y1: 0.7,  x2: 0.56, y2: 0.94 },
+        ],
+        // bounding box that body MUST fill
+        targetBox: { x: 0.22, y: 0.03, w: 0.56, h: 0.94 }
+    },
+    pushup: {
+        cameraAngle: 'צד (פרופיל 90°)',
+        cameraIcon: '↔',
+        standing: [
+            // head
+            { type: 'circle', x: 0.12, y: 0.38, r: 0.05 },
+            // body (horizontal)
+            { type: 'line', x1: 0.17, y1: 0.40, x2: 0.72, y2: 0.55 },
+            // arms
+            { type: 'line', x1: 0.24, y1: 0.42, x2: 0.18, y2: 0.62 },
+            { type: 'line', x1: 0.18, y1: 0.62, x2: 0.15, y2: 0.72 },
+            // legs
+            { type: 'line', x1: 0.72, y1: 0.55, x2: 0.80, y2: 0.72 },
+            { type: 'line', x1: 0.80, y1: 0.72, x2: 0.88, y2: 0.74 },
+        ],
+        targetBox: { x: 0.06, y: 0.30, w: 0.88, h: 0.50 }
+    }
+};
+
+// ═══════════════════════════════════════════════════
+//  BODY IN FRAME CHECK
+// ═══════════════════════════════════════════════════
+// Key landmarks needed per exercise (must be visible)
+const REQUIRED_LMS = {
+    squat:  [0, 11, 12, 23, 24, 25, 26, 27, 28],  // nose, shoulders, hips, knees, ankles
+    pushup: [0, 11, 12, 13, 14, 15, 16, 23, 24, 27, 28]
+};
+
+function checkBodyInFrame(lms) {
+    const required = REQUIRED_LMS[poseState.exercise] || REQUIRED_LMS.squat;
+    const missing = required.filter(i => (lms[i].visibility || 0) < 0.5);
+
+    // Check if body fills reasonable portion of frame (not too close, not too far)
+    const visLms = [0,11,12,23,24,25,26,27,28]
+        .filter(i => (lms[i].visibility || 0) > 0.4)
+        .map(i => lms[i]);
+
+    if (visLms.length < 3) return { ok: false, msg: '⚠️ לא נמצא גוף – עמוד מול המצלמה', dir: 'none' };
+
+    const xs = visLms.map(p => p.x), ys = visLms.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const bodyW = maxX - minX, bodyH = maxY - minY;
+
+    // Too close (body fills too much)
+    if (bodyW > 0.85 || bodyH > 0.92) return { ok: false, msg: '⬅️ התרחק מהמצלמה', dir: 'far' };
+
+    // Too far (body too small)
+    if (bodyH < 0.45 && required.includes(27)) return { ok: false, msg: '➡️ התקרב קצת', dir: 'close' };
+
+    // Body cut off on sides
+    if (minX < 0.04) return { ok: false, msg: '← הסט שמאלה', dir: 'right' };
+    if (maxX > 0.96) return { ok: false, msg: '→ הסט ימינה', dir: 'left' };
+
+    // Missing critical landmarks
+    if (missing.length > 2) {
+        const isBottom = missing.some(i => [25,26,27,28].includes(i));
+        const isTop    = missing.some(i => [0,11,12].includes(i));
+        if (isBottom) return { ok: false, msg: '⬇️ הנמך את המצלמה או התרחק', dir: 'far' };
+        if (isTop)    return { ok: false, msg: '⬆️ הגבה את המצלמה או התרחק', dir: 'far' };
+        return { ok: false, msg: '↔️ הסתובב לצד המצלמה', dir: 'rotate' };
+    }
+
+    return { ok: true, msg: '✅ מיקום מושלם!', dir: 'ok' };
+}
+
+// ═══════════════════════════════════════════════════
 //  POSE RESULTS
 // ═══════════════════════════════════════════════════
 let lastPoseCue = '';
+let frameCheckCooldown = 0;
 
 function onPoseResults(results) {
     const canvas = document.getElementById('poseCanvas');
@@ -1065,11 +1287,33 @@ function onPoseResults(results) {
     canvas.height = results.image.height;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    const sil = SILHOUETTES[poseState.exercise];
+
     if (!results.poseLandmarks) {
-        setPoseFeedback('⚠️ לא זוהה גוף – עמוד בפריים', 'warn'); return;
+        // Draw silhouette guide when no body detected
+        drawSilhouette(ctx, canvas, sil, false);
+        setPoseFeedback('⚠️ לא זוהה גוף – עמוד בפריים', 'warn');
+        showPositionBanner(true, '⬅️ התרחק מהמצלמה עד שכל הגוף נראה', false);
+        return;
     }
 
     const lms = results.poseLandmarks;
+
+    // Check body positioning every frame
+    const frameCheck = checkBodyInFrame(lms);
+
+    if (!frameCheck.ok) {
+        // Body detected but not fully in frame — show silhouette + direction
+        drawSilhouette(ctx, canvas, sil, false);
+        drawPoseSkeleton(ctx, canvas, lms, 'warn');  // show skeleton even if partial
+        showPositionBanner(true, frameCheck.msg, false);
+        setPoseFeedback(frameCheck.msg, 'warn');
+        return;
+    }
+
+    // Body fully in frame — hide banner, run analysis
+    showPositionBanner(false, '✅ מיקום מושלם!', true);
+
     const ex  = POSE_EXERCISES[poseState.exercise];
     const res = ex.analyze(lms);
 
@@ -1081,11 +1325,110 @@ function onPoseResults(results) {
 
     if (res.repCounted) {
         poseState.reps++;
+        playRepSound();
         const el = document.getElementById('poseRepNum');
         el.textContent = poseState.reps;
         el.classList.add('flash');
         setTimeout(() => el.classList.remove('flash'), 350);
     }
+}
+
+// ═══════════════════════════════════════════════════
+//  POSITION BANNER
+// ═══════════════════════════════════════════════════
+let bannerTimeout = null;
+let lastFrameOk = false; // track edge: not-ok → ok
+
+function showPositionBanner(show, msg, isGood) {
+    const el  = document.getElementById('posePositionBanner');
+    const txt = document.getElementById('ppbText');
+    const ico = document.getElementById('ppbIcon');
+    const cam = document.getElementById('cameraWrap') || document.querySelector('.pose-camera-col');
+
+    // Detect transition: bad → good → play sound + flash
+    if (isGood && !lastFrameOk) {
+        playFrameOkSound();
+        // green border flash on camera column
+        const col = document.querySelector('.pose-camera-col');
+        if (col) {
+            col.classList.remove('frame-ok');
+            col.offsetHeight; // reflow
+            col.classList.add('frame-ok');
+            setTimeout(() => col.classList.remove('frame-ok'), 700);
+        }
+    }
+    lastFrameOk = isGood;
+
+    if (show) {
+        txt.textContent = msg;
+        ico.textContent = isGood ? '✅' : '↔';
+        el.className = 'pose-position-banner visible' + (isGood ? ' good' : '');
+        if (isGood) {
+            if (bannerTimeout) clearTimeout(bannerTimeout);
+            bannerTimeout = setTimeout(() => el.classList.remove('visible'), 2000);
+        }
+    } else {
+        el.classList.remove('visible');
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  SILHOUETTE DRAWING
+// ═══════════════════════════════════════════════════
+function drawSilhouette(ctx, canvas, sil, active) {
+    if (!sil) return;
+    const W = canvas.width, H = canvas.height;
+    const alpha = active ? 0.9 : 0.35;
+    const color = active ? 'rgba(255,210,63,' + alpha + ')' : 'rgba(255,255,255,0.25)';
+
+    // Draw target bounding box (dashed)
+    const tb = sil.targetBox;
+    ctx.save();
+    ctx.setLineDash([12, 8]);
+    ctx.strokeStyle = 'rgba(255,210,63,0.4)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(tb.x * W, tb.y * H, tb.w * W, tb.h * H);
+    ctx.setLineDash([]);
+
+    // Corner decorations
+    const cSize = 18, cx = tb.x * W, cy = tb.y * H, cw = tb.w * W, ch = tb.h * H;
+    ctx.strokeStyle = 'rgba(255,210,63,0.8)';
+    ctx.lineWidth = 3;
+    // top-left
+    ctx.beginPath(); ctx.moveTo(cx, cy + cSize); ctx.lineTo(cx, cy); ctx.lineTo(cx + cSize, cy); ctx.stroke();
+    // top-right
+    ctx.beginPath(); ctx.moveTo(cx+cw-cSize, cy); ctx.lineTo(cx+cw, cy); ctx.lineTo(cx+cw, cy+cSize); ctx.stroke();
+    // bottom-left
+    ctx.beginPath(); ctx.moveTo(cx, cy+ch-cSize); ctx.lineTo(cx, cy+ch); ctx.lineTo(cx+cSize, cy+ch); ctx.stroke();
+    // bottom-right
+    ctx.beginPath(); ctx.moveTo(cx+cw-cSize, cy+ch); ctx.lineTo(cx+cw, cy+ch); ctx.lineTo(cx+cw, cy+ch-cSize); ctx.stroke();
+
+    // Label inside box
+    ctx.font = `bold ${Math.round(W * 0.028)}px Rubik, Heebo, sans-serif`;
+    ctx.fillStyle = 'rgba(255,210,63,0.7)';
+    ctx.textAlign = 'center';
+    ctx.fillText('עמוד כאן', (tb.x + tb.w/2) * W, (tb.y + tb.h + 0.04) * H);
+
+    // Stick figure
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'rgba(255,210,63,0.5)';
+    ctx.shadowBlur = 8;
+    for (const s of sil.standing) {
+        if (s.type === 'circle') {
+            ctx.beginPath();
+            ctx.arc(s.x * W, s.y * H, s.r * Math.min(W,H), 0, Math.PI * 2);
+            ctx.stroke();
+        } else if (s.type === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(s.x1 * W, s.y1 * H);
+            ctx.lineTo(s.x2 * W, s.y2 * H);
+            ctx.stroke();
+        }
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1148,10 +1491,114 @@ function updatePoseMetrics(metrics) {
 }
 
 // ═══════════════════════════════════════════════════
+//  WEB AUDIO — צלילים
+// ═══════════════════════════════════════════════════
+let audioCtx = null;
+let soundEnabled = true;
+
+function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+// צליל "בינג" — כשהגוף במקום הנכון
+function playFrameOkSound() {
+    if (!soundEnabled) return;
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);          // A5
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12); // E6
+
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.55);
+    } catch(e) {}
+}
+
+// צליל "טיק" — ספירה לאחור
+function playTickSound(isFinal) {
+    if (!soundEnabled) return;
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+
+        osc.type = 'sine';
+        const freq = isFinal ? 1047 : 660; // C6 vs E5
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.35, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isFinal ? 0.5 : 0.18));
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + (isFinal ? 0.5 : 0.2));
+    } catch(e) {}
+}
+
+// צליל "פינג" — חזרה נספרה
+function playRepSound() {
+    if (!soundEnabled) return;
+    try {
+        const ctx = getAudioCtx();
+        [0, 0.1].forEach((offset, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(i === 0 ? 523 : 784, ctx.currentTime + offset);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.25);
+            osc.start(ctx.currentTime + offset);
+            osc.stop(ctx.currentTime + offset + 0.28);
+        });
+    } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════
+//  COUNTDOWN
+// ═══════════════════════════════════════════════════
+function runCountdown(seconds, onDone) {
+    const overlay = document.getElementById('poseCountdown');
+    const numEl   = document.getElementById('poseCountdownNum');
+    overlay.classList.add('active');
+
+    let remaining = seconds;
+
+    function tick() {
+        numEl.textContent = remaining;
+        // re-trigger animation
+        numEl.style.animation = 'none';
+        numEl.offsetHeight; // reflow
+        numEl.style.animation = 'countPulse 1s ease-out forwards';
+
+        playTickSound(remaining === 1);
+
+        if (remaining <= 0) {
+            overlay.classList.remove('active');
+            onDone();
+            return;
+        }
+        remaining--;
+        setTimeout(tick, 1000);
+    }
+    tick();
+}
+
+// ═══════════════════════════════════════════════════
 //  SESSION
 // ═══════════════════════════════════════════════════
 function startPoseSession() {
     poseState.running=true; poseState.reps=0; poseState.phase='up'; lastPoseCue='';
+    poseState.frameWasOk = false; // track transition to OK
     poseState.session={ startTime:Date.now(), goodReps:0, badReps:0, cues:{} };
     document.getElementById('poseRepNum').textContent='0';
     document.getElementById('posePanelTitle').textContent = '📷 ' + POSE_EXERCISES[poseState.exercise].name;
@@ -1197,11 +1644,27 @@ function showPoseSummary() {
 // ═══════════════════════════════════════════════════
 //  POSE EVENT LISTENERS
 // ═══════════════════════════════════════════════════
+// Exercise placement hints
+const PLACEMENT_HINTS = {
+    squat:  { angle: 'מצלמה מהצד (פרופיל 90°)', height: 'גובה מצלמה: גובה הירך', dist: 'מרחק: 2–3 מטר' },
+    pushup: { angle: 'מצלמה מהצד (פרופיל 90°)', height: 'גובה מצלמה: גובה הכתף / רצפה', dist: 'מרחק: 1.5–2 מטר' }
+};
+
+function updatePlacementGuide(ex) {
+    const h = PLACEMENT_HINTS[ex];
+    if (!h) return;
+    const angle  = document.getElementById('ppgAngle');
+    const height = document.getElementById('ppgHeight');
+    if (angle)  angle.textContent  = h.angle;
+    if (height) height.textContent = h.height;
+}
+
 document.querySelectorAll('.pose-ex-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.pose-ex-btn').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
         poseState.exercise = btn.dataset.ex;
+        updatePlacementGuide(btn.dataset.ex);
     });
 });
 
@@ -1210,13 +1673,16 @@ document.getElementById('poseStartBtn').addEventListener('click', async () => {
     overlay.classList.add('hidden');
 
     if (!poseState.poseReady) {
-        // show inline loading while mediapipe inits
         document.getElementById('poseLoadingOverlay').classList.remove('hidden');
         await initPose();
     }
 
     await startPoseCamera();
-    startPoseSession();
+
+    // ספירה לאחור לפני שמתחיל — זמן ללכת לעמדה
+    runCountdown(3, () => {
+        startPoseSession();
+    });
 });
 
 document.getElementById('poseFlipBtn').addEventListener('click', async () => {
@@ -1224,27 +1690,34 @@ document.getElementById('poseFlipBtn').addEventListener('click', async () => {
     if (poseState.running) await startPoseCamera();
 });
 
+document.getElementById('poseMuteBtn').addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    document.getElementById('poseMuteBtn').textContent = soundEnabled ? '🔔' : '🔕';
+});
+
 // ── ZOOM ──
+// "+" כפתור = ראה יותר = scale קטן יותר = זום אאוט
+// "−" כפתור = זום אין = scale גדול יותר
 let zoomLevel = 1.0;
-const ZOOM_STEP = 0.15, ZOOM_MIN = 0.5, ZOOM_MAX = 2.0;
+const ZOOM_STEP = 0.1, ZOOM_MIN = 0.4, ZOOM_MAX = 1.8;
 
 function applyZoom() {
     const vid    = document.getElementById('poseVideo');
     const canvas = document.getElementById('poseCanvas');
     const mirror = poseState.facingUser ? -1 : 1;
-    const t = `scaleX(${mirror * zoomLevel}) scaleY(${zoomLevel})`;
-    vid.style.transform    = t;
-    canvas.style.transform = t;
+    vid.style.transform    = `scaleX(${mirror * zoomLevel}) scaleY(${zoomLevel})`;
+    canvas.style.transform = `scaleX(${mirror * zoomLevel}) scaleY(${zoomLevel})`;
     document.getElementById('zoomLabel').textContent = zoomLevel.toFixed(1) + '×';
 }
 
 document.getElementById('zoomIn').addEventListener('click', () => {
-    zoomLevel = Math.min(ZOOM_MAX, parseFloat((zoomLevel - ZOOM_STEP).toFixed(2)));
-    // zooming "in" means seeing more = scale down
+    // "+" = ראה יותר = scale קטן (זום אאוט)
+    zoomLevel = Math.max(ZOOM_MIN, parseFloat((zoomLevel - ZOOM_STEP).toFixed(1)));
     applyZoom();
 });
 document.getElementById('zoomOut').addEventListener('click', () => {
-    zoomLevel = Math.max(ZOOM_MIN, parseFloat((zoomLevel + ZOOM_STEP).toFixed(2)));
+    // "−" = זום אין = scale גדול
+    zoomLevel = Math.min(ZOOM_MAX, parseFloat((zoomLevel + ZOOM_STEP).toFixed(1)));
     applyZoom();
 });
 
