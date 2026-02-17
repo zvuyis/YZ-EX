@@ -325,12 +325,15 @@
         /* loading overlay inside camera */
         .pose-loading-overlay {
             position: absolute; inset: 0; z-index: 20;
-            display: flex; flex-direction: column;
+            display: none;
+            flex-direction: column;
             align-items: center; justify-content: center; gap: 16px;
             background: rgba(10,10,15,0.92);
             transition: opacity 0.5s;
         }
-        .pose-loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .pose-loading-overlay.visible {
+            display: flex;
+        }
         .pose-spinner { width: 48px; height: 48px; border: 4px solid rgba(255,107,53,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.9s linear infinite; }
         .pose-loading-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; text-align: center; }
 
@@ -1673,7 +1676,7 @@ document.getElementById('poseStartBtn').addEventListener('click', async () => {
     overlay.classList.add('hidden');
 
     if (!poseState.poseReady) {
-        document.getElementById('poseLoadingOverlay').classList.remove('hidden');
+        document.getElementById('poseLoadingOverlay').classList.add('visible');
         await initPose();
     }
 
@@ -1721,14 +1724,7 @@ document.getElementById('zoomOut').addEventListener('click', () => {
     applyZoom();
 });
 
-// reset zoom on camera start
-const _origStartCam = startPoseCamera;
-async function startPoseCameraWrapped() {
-    await _origStartCam();
-    zoomLevel = 1.0;
-    applyZoom();
-}
-document.getElementById('poseStartBtn').removeEventListener('click', null);
+// zoom is reset inside startPoseCamera via applyZoom()
 
 document.getElementById('poseStopBtn').addEventListener('click', stopPoseSession);
 document.getElementById('poseResetBtn').addEventListener('click', resetPoseReps);
